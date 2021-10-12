@@ -233,8 +233,8 @@ for i = 1:nExp
     
     % sets averaging indices for the data
     nFrmMx = min(length(indB),ceil(Ttot(end)/cP.tBin));
-    indOfs = floor(mod((vec2sec(T0nw)-tDayStart)/cP.tBin,length(indB)));
-    ii = cellfun(@(x)((x-indOfs):nFrm:nFrmMx),(num2cell(1:nFrm))','un',0);            
+    indOfs = floor(mod((vec2sec(T0nw)-tDayStart)/cP.tBin,nFrm));
+    ii = arrayfun(@(x)((x-indOfs):nFrm:nFrmMx),(1:nFrm)','un',0);
     ii = cellfun(@(x)(x(x>0)),ii,'un',0);   
         
     % loops through each apparatus plotting the position heat-maps
@@ -567,6 +567,7 @@ if ~isempty(isNN_L)
 end
     
 % memory allocation
+nDay = max(nDay,size(indT,2));
 [HH,indT] = deal(NaN(nBin,cP.rBin),num2cell(indT,1)');
 [H,BHistT] = deal(cell(nGrp,1),repmat({HH},nDay,length(flyok)));
 
