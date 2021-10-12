@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = '2D Fly Position Traces';
 pData.Type = {'Indiv','Multi'};
 pData.fType = [2 1 1 3];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);
     
     % special parameter fields/data struct
     [pData.hasSP,pData.hasRC,pData.hasRS] = deal(true,false,false);
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = '2D';
+rI.Stim = 'None';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -67,7 +82,7 @@ pP(7) = setParaFields(a{1},'Boolean',1,'showTitles','Show Genotype Titles');
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);
+nApp = length(snTot.iMov.ok);
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -78,7 +93,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -113,7 +128,7 @@ if (~ok); plotD = []; return; end
 % ------------------------------------------- %
 
 % array dimensions
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.ok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,...
@@ -151,7 +166,7 @@ for i = 1:nExp
     end
     
     % calculates the video frame rate and experiment apparatus indices
-    iApp = find(~cellfun(@isempty,snTot(i).appPara.flyok));
+    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
     
     % sets the relevant x/y-locations for the current experiment  
     [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp,ii);
@@ -208,8 +223,9 @@ ind = find(sP.Sub.isPlot);
 nApp = length(ind); if (nApp == 0); return; end
 p = plotD{1}(ind);
 
-% retrieves the parent axis
-hP = get(gca,'parent');
+% retrieves the panel object handle
+hP = getCurrentAxesProp('Parent');
+delete(getCurrentAxesProp)
 
 % memory allocation
 hAx = zeros(nApp,1);

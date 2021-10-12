@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Population Waking Metrics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 1 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -17,11 +18,11 @@ if (nargin == 1)
     pData.cP = initCalcPara(snTot);
     pData.pP = initPlotPara(snTot);
     pData.oP = initOutputPara(snTot);
-    pData.pF = initPlotFormat(snTotL);
+    pData.pF = initPlotFormat(snTotL);    
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);    
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);    
     
     % special parameter fields/data struct
     isLong = ~detIfShortExpt(field2cell(snTotL,'T'));
@@ -32,6 +33,20 @@ end
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);        
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';        
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -81,7 +96,7 @@ pP(6) = setParaFields(a{2},'Boolean',1,'plotErr','Show Error Bars/Outliers');
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);    
+nApp = length(snTot.iMov.ok);    
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -92,7 +107,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -132,7 +147,7 @@ end
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 nGrp = str2double(cP.nGrp);
 
 % fixed parameters
@@ -195,7 +210,7 @@ for i = 1:nExp
 
     % sets the total time and ok flags
     Ttot = cell2mat(snTot(i).T);
-    flyok = snTot(i).appPara.flyok;
+    flyok = snTot(i).iMov.flyok;
     nDayMx = max(nDayMx,ceil(convertTime(Ttot(end),'sec','days')));
 
     % determines the binned indices (for time length, tBin) and determines the
@@ -310,7 +325,7 @@ else
 end
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
     
 % ----------------------- %
 % --- FIGURE CREATION --- %
@@ -423,7 +438,7 @@ if (nGrp == 1)
     resetObjPos(hAxB,'Bottom',0.02,1);
     
     % sets the group strings
-    setGroupString(hAxB,pF,xi,snTot(1).appPara.Name(ind),tRot,-0.005);
+    setGroupString(hAxB,pF,xi,snTot(1).iMov.pInfo.gName(ind),tRot,-0.005);
 else
     % case is for multiple subplots
     resetAxesPos(hAxB,m,n);

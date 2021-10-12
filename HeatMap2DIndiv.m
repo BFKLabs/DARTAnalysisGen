@@ -7,8 +7,9 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 
 % sets the function name/
 pData.Name = 'Individual 2D Heatmaps';
-pData.Type = 'Indiv';
+pData.Type = {'Indiv'};
 pData.fType = [2 1 1 3];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)
@@ -20,17 +21,32 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);
     
     % special parameter fields/data struct
-    [pData.hasSP,pData.hasRC,pData.hasRS] = deal(true,true,false);
-    pData.sP = initSpecialPara(snTotL,pData);
+%     [pData.hasSP,pData.hasRC,pData.hasRS] = deal(true,true,false);
+    [pData.hasSR] = deal(true);
+    pData.sP = initSpecialPara(snTotL,pData,[],1);
 end
 
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+        
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = '2D (Circle)';
+rI.Stim = 'None';
+rI.Spec = 'None';
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -58,13 +74,13 @@ pP = setParaFields(nPara);
 % sets the plot parameter fields into the data struct
 pP(1) = setParaFields([],'Boolean',1,'pltLog','Plot Logarithmic Heatmap Values');
 pP(2) = setParaFields([],'Number',5,'pDel','Heatmap Separation Gap',[1 20 true]);
-pP(3) = setParaFields([],'Number',10,'nPlot','Max Sub-Region Heatmaps',[1 20 true]);
+pP(3) = setParaFields([],'Number',10,'nPlot','Max Sub-Region Heatmaps',[1 100 true]);
 
 % --- initialises the plot formatting data struct --- %
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);
+nApp = length(snTot.iMov.ok);
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -75,7 +91,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -119,7 +135,7 @@ end
 % ------------------------------------------- %
 
 % array dimensions
-[nApp,ok,dnDel] = deal(length(snTot.appPara.ok),true,5);
+[ok,dnDel] = deal(true,5);
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,'Ihm',[]);
@@ -133,7 +149,7 @@ isN = sqrt(x.^2 + y.^2) > 0.5;
 if (isDN); isN = [isN,true(nG,dnDel),isN]; end
 
 % calculates the video frame rate and experiment apparatus indices
-iApp = find(~cellfun(@isempty,snTot.appPara.flyok));
+iApp = find(~cellfun(@isempty,snTot.iMov.flyok));
 szHM = nG*[1 (1+isDN)] + [0 dnDel*isDN];
 
 % --------------------------------- %
@@ -146,6 +162,9 @@ h = ProgBar(wStr,'2D Heatmap Calculations');
 
 % sets the relevant x/y-locations for the current experiment  
 [dPx,dPy,R] = get2DCoordsBG(snTot,iApp);
+if ~iscell(dPx)
+    [dPx,dPy,R] = deal({dPx},{dPy},{R});
+end
 
 % determines the day/night time points
 if isDN
@@ -235,35 +254,33 @@ pF = pData.pF;
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %
 
-% sets the plotting indices and subplot indices
-[ind,m,n] = deal(find(sP.Sub.isPlot),sP.Sub.nRow,sP.Sub.nCol);
-nApp = length(ind); if (nApp == 0); return; end
+% memory allocation and other dimensioning
+ind = sP.pInd;
+p = plotD{1}(ind);
+
+% if there are no heatmaps for this group, then exit
+if (isempty(p.Ihm)); return; end
 
 % retrieves the heatmap array
-Ihm = field2cell(plotD{1}(ind),'Ihm')';
+Ihm = p.Ihm;
 if (pP.pltLog)
-    Ihm = cellfun(@(x)(cellfun(@(y)(log10(y+1)),x,'un',0)),Ihm,'un',0);
+    Ihm = cellfun(@(y)(log10(y+1)),Ihm,'un',0);
 end
 
+% retrieves the panel object handle
+hP = getCurrentAxesProp('Parent');
+pPos = get(hP,'Position');
+
 % reduces the output plots to the required amount
-indH = cellfun(@(x)(sort(randperm(length(x),min(length(x),pP.nPlot)))),Ihm,'un',0);
-Ihm = cellfun(@(x,y)(x(y)),Ihm,indH,'un',0);
-
-% retrieves the parent axis
-hP = get(gca,'parent');
-
-% memory allocation
-hAx = cell(nApp,1);
+nHm = length(Ihm);
+Ihm = Ihm(sort(randperm(nHm,min(nHm,pP.nPlot))));
 
 % sets the custom colormap values
 cMap = [zeros(1,3);colormap('jet');ones(1,3)];
 
 % determines the maximum values over all the heatmaps
-Ymx = max(cellfun(@(x)(max(cellfun(@(y)(max(y(:))),x(:)))),Ihm));
+Ymx = max(cellfun(@(x)(max(x(:))),Ihm));
 dcMap = 1/(size(cMap,1)-3);
-
-% paramters
-nG = cP.nGrid;
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -273,76 +290,65 @@ nG = cP.nGrid;
 pF.Title = pF.Title(ind);
 
 % retrieves the formatting struct
-pF = retFormatStruct(pF,nApp);
+pF = retFormatStruct(pF,1);
 
 % ----------------------- %
 % --- FIGURE CREATION --- %
 % ----------------------- %
 
-% memory allocation
-IhmT = cell(1,length(Ihm));
+% determines the dimensions of the plot grid
+nR = floor(sqrt(pP.nPlot*pPos(4)/pPos(3)));
+nC = ceil(pP.nPlot/nR);
+[szR,szC] = size(Ihm{1});
 
-% 
-szHm = cell2mat(cellfun(@(x)(size(x)),Ihm(:),'un',0));
-[nR,nC] = deal(max(szHm(:,1)),max(szHm(:,2)));
-[szR,szC] = size(Ihm{1}{1});
+% creates the subplot axis
+hAx = createSubPlotAxes(hP,[1,1],1);  
+axis(hAx,'off')
 
-% sets the combine heatmap arrays
-for i = 1:length(IhmT)
-    % creates the subplot axis
-    hAx{i} = createSubPlotAxes(hP,[m,n],i);  
-    axis(hAx{i},'off')
-    
-    % memory allocations
-    [nRnw,nCnw] = size(Ihm{i});    
-    IhmT{i} = NaN(nR*szR+(nR+1)*pP.pDel,nC*szC+(nC+1)*pP.pDel);
+% memory allocations   
+IhmT = NaN(nR*szR+(nR+1)*pP.pDel,nC*szC+(nC+1)*pP.pDel);
    
-    % sets the individual heatmaps into the combined heatmap
-    for j = 1:nRnw
-        for k = 1:nCnw
-            % sets the row/column indices for the new heatmap
-            iR = j*pP.pDel + (j-1)*szR + (szR:-1:1);
-            iC = k*pP.pDel + (k-1)*szC + (1:szC);
-            
-            % sets the individual heatmap
-            IhmT{i}(iR,iC) = Ihm{i}{j,k}; 
-        end
-    end
+% sets the individual heatmaps into the combined heatmap
+for j = 1:length(Ihm)
+    % sets the global row/column indices
+    [iRow,iCol] = deal(floor((j-1)/nC)+1,mod(j-1,nC)+1);
     
-    % reverses the order of the arrays
-    IhmT{i} = IhmT{i}(end:-1:1,:);
-    
-    % sets the overall maximum values
-    Bnan = isnan(IhmT{i});
-    IhmT{i}(bwmorph(~Bnan,'dilate',1) & Bnan) = -dcMap;
-    IhmT{i}(isnan(IhmT{i})) = Ymx+dcMap;
+    % sets the row/column indices for the new heatmap
+    iR = iRow*pP.pDel + (iRow-1)*szR + (szR:-1:1);
+    iC = iCol*pP.pDel + (iCol-1)*szC + (1:szC);
+
+    % sets the individual heatmap
+    IhmT(iR,iC) = Ihm{j};     
 end
 
-% loops through all the subplots
-for i = 1:nApp    
-    % creates the heatmap image    
-    set(get(hP,'parent'),'CurrentAxes',hAx{i});
-    imagesc(IhmT{i});
-    colormap(cMap)    
-        
-    % ensures the axis is equal is size and hold is on
-    axis(hAx{i},'equal');         
-    set(hAx{i},'xtick',[],'ytick',[],'yticklabel',[],'xticklabel',[])     
-    if (nApp == 1); drawnow; end
-    
-    % formats the plot axis
-    formatPlotAxis(hAx{i},pF,i);      
-        
-    % sets the x/y axis limits    
-    set(hAx{i},'box','off','xcolor','w','ycolor','w')           
-    if (~isHG1)
-        xL = get(hAx{i},'xlim');
-        set(hAx{i},'xlim',xL + 0.001*diff(xL)*[-1 1]);
-    end    
-    
-    % turns the axis on
-    axis(hAx{i},'on')
-end
+% reverses the order of the arrays
+IhmT = IhmT(end:-1:1,:);
+
+% sets the overall maximum values
+Bnan = isnan(IhmT);
+IhmT(bwmorph(~Bnan,'dilate',1) & Bnan) = -dcMap;
+IhmT(isnan(IhmT)) = Ymx+dcMap;
+
+% creates the heatmap image    
+set(get(hP,'parent'),'CurrentAxes',hAx);
+imagesc(IhmT);
+colormap(cMap)    
+
+% ensures the axis is equal is size and hold is on
+axis(hAx,'equal');         
+set(hAx,'xtick',[],'ytick',[],'yticklabel',[],'xticklabel',[])     
+drawnow; 
+
+% formats the plot axis
+formatPlotAxis(hAx,pF,1);      
+
+% sets the x/y axis limits    
+set(hAx,'box','off','xcolor','w','ycolor','w')
+xL = get(hAx,'xlim');
+set(hAx,'xlim',xL + 0.001*diff(xL)*[-1 1]);
+
+% turns the axis on
+axis(hAx,'on')
 
 % ----------------------------------------------------------------------- %
 % ---                         OUTPUT FUNCTION                         --- %

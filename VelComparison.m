@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Pre & Post Stimuli Speed Comparison';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 3 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -17,11 +18,11 @@ if (nargin == 1)
     pData.cP = initCalcPara(snTot);
     pData.pP = initPlotPara(snTot);
     pData.oP = initOutputPara(snTot);
-    pData.pF = initPlotFormat(snTotL);
+    pData.pF = initPlotFormat(snTotL);    
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
     [pData.hasSR,pData.hasRS] = deal(true,false);
@@ -31,6 +32,20 @@ end
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+        
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Long';
+rI.Shape = 'None';
+rI.Stim = 'Motor';
+rI.Spec = 'None';        
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -85,7 +100,7 @@ pP(9) = setParaFields(a{2},'Boolean',1,'plotFixedY','Fixed Subplot Limits To Ove
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-[nApp,nSub] = deal(length(snTot.appPara.ok),3);
+[nApp,nSub] = deal(length(snTot.iMov.ok),3);
 pF = setFormatFields(nSub);
 
 % initialises the font structs
@@ -106,7 +121,7 @@ pF.yLabel(3).String = 'Speed (mm s^{-1})';
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Axis(1).String{i} = snTot.appPara.Name{i};
+    pF.Axis(1).String{i} = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -145,7 +160,7 @@ cP.movType = 'Absolute Distance';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 nGrp = str2double(cP.nGrp);
 
 % fixed parameters
@@ -193,13 +208,15 @@ for i = 1:nExp
     end
         
     % sets the video/stimuli time stamps into a single vector
-    flyok = snTot(i).appPara.flyok;
-    [Ttot,Ts] = deal(cell2mat(snTot(i).T),cell2mat(snTot(i).Ts));
+    flyok = snTot(i).iMov.flyok;
+    Ttot = cell2mat(snTot(i).T);
+    Ts = getMotorFiringTimes(snTot(i).stimP);
     if ~isempty(Ts)
         % determines the indices of the stimuli events within the total
         % experiment, and determines what time groups that the stimuli
         % events took place in         
-        indGrp = detTimeGroupIndices(Ts,snTot(i).iExpt(1).Timing.T0,nGrp,cP.Tgrp0,true);
+        T0 = snTot(i).iExpt(1).Timing.T0;
+        indGrp = detTimeGroupIndices(Ts,T0,nGrp,cP.Tgrp0,true);
         
         % calculates the pre-stimuli velocities
         indV1 = cellfun(@(x)(find(Ttot>(x-tBefore),1,'first'):...
@@ -288,7 +305,7 @@ isBar = strcmp(pP.pType,'Bar Graph');
 [c,mm,lWid,nTick,pWL] = deal('rk','+o*xsd^v><ph',2,6,0.85);
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -390,7 +407,7 @@ else
     set(hLg,'position',lgP)    
     
     %
-    if ((~isHG1) && (isBar))
+    if isBar
         hErr = findall(hAx,'tag','hErr');                
         cSzNw = hErr(1).CapSize*(axP(3)-pWL*lgP(3))/axP(3);
         

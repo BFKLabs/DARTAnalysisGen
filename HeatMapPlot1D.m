@@ -7,8 +7,9 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 
 % sets the function name/type
 pData.Name = '1D Fly Location Heatmap (Total)';
-pData.Type = 'Pop';
+pData.Type = {'Pop'};
 pData.fType = [2 1 1 2];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
     [pData.hasSP,pData.hasRC,pData.hasRS] = deal(true,false,false);
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = '1D';
+rI.Stim = 'None';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -76,7 +91,7 @@ pP(5) = setParaFields(a{2},'Number',1,'dRate','Signal Downsampling Rate',[1 100 
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);  
+nApp = length(snTot.iMov.ok);  
 pF = setFormatFields(1);
 
 % initialises the font structs
@@ -87,7 +102,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -125,7 +140,7 @@ end
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[Ttot,flyok] = deal(cell2mat(snTot.T),snTot.appPara.flyok);
+[Ttot,flyok] = deal(cell2mat(snTot.T),snTot.iMov.flyok);
 [nApp,ok] = deal(length(flyok),true);
 
 % determines the binned indices (for time length, tBin) and determines the
@@ -170,7 +185,7 @@ for i = 1:nApp
     if (~isempty(snTot.Px{i}))                      
         % calculates the position histogram
         [HistN{i},plotD(i).P] = calcPosHist(snTot,cP,indB,i);
-        N = sum(snTot.appPara.flyok{i});
+        N = sum(snTot.iMov.flyok{i});
         
         % sets the plot values (reverses the order for the 2D values)
         x = nansum(cell2mat(reshape(HistN{i},[1 1 numel(HistN{i})])),3);
@@ -238,8 +253,8 @@ pF = retFormatStruct(pF,nApp);
 % --- PLOT PROPERTIES INTIALISATION --- %
 % ------------------------------------- %
     
-% sets the axis handle
-hAx = gca;
+% retrieves the panel object handle
+hAx = getCurrentAxesProp();
 
 % sets the y-axis step size (based on the number of bins)
 rBin = max(cellfun(@(x)(size(x,2)),field2cell(p,'Y')));
@@ -363,13 +378,8 @@ optYTitlePlacement(hAx,hText)
 
 % updates the position of the colour bar
 set(hCB,'Units','Normalized')
-if (isHG1)
-    cbPos = get(hCB,'OuterPosition');    
-else
-    set(hCB,'Units','Normalized');
-    cbPos = get(hCB,'Position');
-    cbPos(3) = cbPos(3)*2.5;
-end
+cbPos = get(hCB,'Position');
+cbPos(3) = cbPos(3)*2.5;
     
 % resets the axes width
 resetObjPos(hAx,'width',0.99-sum(cbPos([1 3])),1)
@@ -449,7 +459,7 @@ function [BHistT,BHistP] = calcPosHist(snTot,cP,indB,iApp)
 
 % parameters
 [pDel,xiH] = deal(0.001,1:cP.rBin);
-flyok = snTot.appPara.flyok{iApp};
+flyok = snTot.iMov.flyok{iApp};
 ifok = find(flyok);
 
 % sets the x-coordinates of the flies   

@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Stimuli Response Curve Fitting (Long)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 3 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);    
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);    
     
     % special parameter fields/data struct
     [pData.hasSR,pData.hasRS] = deal(true,false);
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Long';
+rI.Shape = 'None';
+rI.Stim = 'Motor';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -120,7 +135,7 @@ end
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-[nApp,nSub] = deal(length(snTot.appPara.ok),8);
+[nApp,nSub] = deal(length(snTot.iMov.ok),8);
 pF = setFormatFields(nSub);
 
 % initialises the font structs
@@ -156,7 +171,7 @@ pF.yLabel(8).String = 'Time (min)';
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Axis(1).String{i} = snTot.appPara.Name{i};
+    pF.Axis(1).String{i} = snTot.iMov.pInfo.gName{i};
 end
 
 % sets the font sizes for the inset axes
@@ -226,7 +241,7 @@ cP.movType = 'Absolute Speed';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % fixed parameters
 nGrp = str2double(cP.nGrp);
@@ -272,7 +287,7 @@ P = repmat({cell(nDay,nGrp)},nApp,1+(~isempty(snTot(1).Py)));
 [hasX,hasY] = deal(false);
 [is2D,iOfs] = deal(~isempty(snTot(1).Py),zeros(nApp,1));
 aok = cell2mat(cellfun(@(x)(field2cell(...
-                    field2cell(x,'appPara',1),'ok')),num2cell(snTot))');
+                    field2cell(x,'iMov',1),'ok')),num2cell(snTot))');
                 
 % ---------------------------------%
 % --- STIMULI TRACE EXTRACTION --- %
@@ -306,23 +321,25 @@ for i = 1:nExp
             % resets the other waitbar panels
             h.Update(1+wOfs,'Time Binning Data',0);
         end
-    end
-        
+    end      
+    
     % sets the video/stimuli time stamps into a single vector
-    [flyok,Ttot] = deal(snTot(i).appPara.flyok,cell2mat(snTot(i).T));
-    Ts = snTot(i).Ts(~cellfun(@isempty,snTot(i).Ts));    
-    if (~isempty(Ts))
+    [flyok,Ttot] = deal(snTot(i).iMov.flyok,cell2mat(snTot(i).T));
+    [Ts0,~] = getMotorFiringTimes(snTot(i).stimP);
+%     Ts = snTot(i).Ts(~cellfun(@isempty,snTot(i).Ts));    
+    if ~isempty(Ts0)
         % determines the indices of the stimuli events within the total
         % experiment, and determines what time groups that the stimuli
         % events took place in       
         nFlyR = cellfun(@sum,flyok);
-        Tsf = cell2mat(Ts); Ts = num2cell(Tsf);
+        Tsf = Ts0; 
+        Ts = num2cell(Tsf);
         indGrp = detTimeGroupIndices(Tsf,...
                         snTot(i).iExpt(1).Timing.T0,nGrp,cP.Tgrp0,grpDay);
                                 
         % sets the indices for the pre-stimuli phase
         indV = cellfun(@(x)(find(Ttot>(x-(tBefore+cP.nAvg+1)),1,'first'):...
-                    find(Ttot<(x+tAfter),1,'last')),Ts,'un',0);  
+                            find(Ttot<(x+tAfter),1,'last')),Ts,'un',0);  
         ii = ~cellfun(@isempty,indV);               
         
         % sets the total signals for the pre/post stimuli signals
@@ -331,11 +348,11 @@ for i = 1:nExp
                     (tBefore+cP.nAvg+1)),indV(ii),Ts(ii),'un',0);                                                                               
                 
         % if only considering moving flies, 
-        if (cP.moveOnly)                
+        if cP.moveOnly            
             % determines the points for the movement check phase
             indM = cell(size(indV));
-            indM(ii) = cellfun(@(x)((find(Ttot<(x-(cP.tMove*60+1)),1,'last')+1):...
-                    find(Ttot<x,1,'last')),Ts(ii),'un',0);  
+            indM(ii) = cellfun(@(x)((find(Ttot<(x-(cP.tMove*60+1)),1,...
+                        'last')+1):find(Ttot<x,1,'last')),Ts(ii),'un',0);  
                 
             % determines the non-empty regions and allocates memory
             jj = ii & ~cellfun(@isempty,indM);
@@ -356,11 +373,11 @@ for i = 1:nExp
             
             if aok(j,i)                 
                 % sets the x-location data (if it exists)
-                if (~isempty(snTot(i).Px))                
+                if ~isempty(snTot(i).Px)               
                     % sets the position values for all the signals
                     [Px,hasX] = deal(snTot(i).Px{j}(:,flyok{j}),true);
                     Pxnw = cellfun(@(x,y)(setBinnedSignals(Px(x,:),y,...
-                        length(T)+cP.nAvg)),indV,iTot,'un',0);                      
+                                    length(T)+cP.nAvg)),indV,iTot,'un',0);                      
                     PxG = cellfun(@(x)(Pxnw(x)),indGrp,'un',0);
                     
                     % if only considering moving flies, retrieve the
@@ -371,7 +388,7 @@ for i = 1:nExp
                 end
                 
                 % sets the y-location data (if it exists)
-                if (~isempty(snTot(i).Py))                
+                if ~isempty(snTot(i).Py)               
                     % sets the position values for all the signals
                     [Py,hasY] = deal(snTot(i).Py{j}(:,flyok{j}),true);
                     Pynw = cellfun(@(x,y)(setBinnedSignals(Py(x,:),y,...
@@ -386,7 +403,7 @@ for i = 1:nExp
                 end                
                 
                 % sets the flags for the flies that are to be kept
-                if (cP.moveOnly)
+                if cP.moveOnly
                     % consider only the moving flies
                     isOK = getPreStimMoving(cP,Pm,jj,nFlyR(j),hasX+2*hasY);
                 else
@@ -463,7 +480,7 @@ end
 % --------------------------------%
     
 % closes the waitbar figure
-if ~h.Updateg(1+wOfs,'Stimuli Response Calculations Complete!',1)
+if ~h.Update(1+wOfs,'Stimuli Response Calculations Complete!',1)
     if nargin < 5; h.closeProgBar(); end
 end
 
@@ -493,8 +510,11 @@ p = plotD{1}(sP.pInd);
 
 % if the current data set is empty, then exit the loop
 aok = any(cell2mat(cellfun(@(x)(field2cell(...
-                field2cell(x,'appPara',1),'ok')),num2cell(snTot))'),2);
+                field2cell(x,'iMov',1),'ok')),num2cell(snTot))'),2);
 if (~aok(sP.pInd)); return; end
+
+% retrieves the panel object handle
+hP = getCurrentAxesProp('Parent');
 
 % retrieves the day separation popup/checkbox object handles
 hPara = findall(0,'tag','figAnalysisPara');
@@ -503,7 +523,7 @@ hCheck = findall(hPara,'tag','grpDayP');
 hText = findall(hPara,'String','Day Index: ');
 
 %
-if (isfield(cP,'grpDay'))
+if isfield(cP,'grpDay')
     grpDay = cP.grpDay;
 else
     grpDay = false;
@@ -582,10 +602,8 @@ if (useDouble)
 end
 
 % sets the title string
-pF.Title(1).String = sprintf('%s (%s)',pF.Title(1).String,snTot(1).appPara.Name{sP.pInd});
-
-% retrieves the parent object handle
-hP = get(gca,'parent');
+grpName = snTot(1).iMov.pInfo.gName{sP.pInd};
+pF.Title(1).String = sprintf('%s (%s)',pF.Title(1).String,grpName);
 
 % --------------------------------- %
 % --- PLOT AXES INITIALISATIONS --- %
@@ -680,7 +698,10 @@ end
 xLim = roundP(p.T([1 end])/60);
 set(hAx,'xlim',xLim,'linewidth',1.5,'box','on'); 
 if (pP.relSpeed); plot(hAx,xLim,[0 0],'r--','linewidth',1.5); end  
-plot(hAx,[0 0],get(gca,'ylim'),'r--','linewidth',1.5)
+
+% retrieves the panel object handle
+yLim = getCurrentAxesProp('ylim');
+plot(hAx,[0 0],yLim,'r--','linewidth',1.5)
 
 % if not plotting the metrics, then exit the function
 if (~pP.incMet)                           
@@ -790,24 +811,19 @@ if (pP.incMet)
     resetObjPos(hAxIns{1},'Height',axP(4));
     
     % creates the legend object
-    if (nGrp > 1)
+    if nGrp > 1
+        % resets the legend strings
         pF.Legend.String = cellfun(@(x,y)(sprintf('%s (N = %i)',x,y)),...
                         lStr(:),num2cell(p.Hist(:)),'un',0);    
            
-        if (isHG1)
-            hBar = sort(findobj(hAxIns{1},'type','patch'));
-            if (isempty(hBar))
-                hBar = sort(findall(get(hAxIns{1},'parent'),'type','patch')); 
-            end    
-        else
-            hBar = cell(nGrp,1);
-            hBar0 = findall(get(hAxIns{1},'Parent'),'tag','hBar');
-            
-            for j = 1:nGrp
-                hBarNw = findall(hBar0,'UserData',j);
-                hBar{j} = hBarNw(1);
-            end
-        end       
+        % resets the bar objects
+        hBar = cell(nGrp,1);
+        hBar0 = findall(get(hAxIns{1},'Parent'),'tag','hBar');
+
+        for j = 1:nGrp
+            hBarNw = findall(hBar0,'UserData',j);
+            hBar{j} = hBarNw(1);
+        end      
 
         % creates the legend object
         hLg = createLegendObj(hBar,pF.Legend,1,0);          
@@ -861,8 +877,9 @@ if (any(sP.pT) || any(sP.pF))
     end
     
     % plots a line for zero speed (relative speed only)
-    if (pP.relSpeed)
-        plot(hAx,get(gca,'xlim'),[0 0],'r--','linewidth',1.5)
+    if pP.relSpeed
+        xLim = getCurrentAxesProp('xlim');
+        plot(hAx,xLim,[0 0],'r--','linewidth',1.5)
     end
 end
 

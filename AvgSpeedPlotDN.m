@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Population Movement (Long)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 3 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,11 +21,11 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
-    pData.canComb = length(snTot(1).appPara.flyok) > 1;
+    pData.canComb = length(snTot(1).iMov.ok) > 1;
     pData.hasSP = true;
     pData.sP = initSpecialPara(snTotL,pData);    
 end
@@ -32,6 +33,20 @@ end
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Long';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -73,7 +88,7 @@ pP(5) = setParaFields(a{2},'List',{1,pList},'errType','Signal Error Type',[],{4,
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);  
+nApp = length(snTot.iMov.ok);  
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -84,7 +99,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot(1).appPara.Name{i};
+    pF.Title(i).String = snTot(1).iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -126,7 +141,7 @@ end
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % sets the binned time vector
 T = ((cP.tBin/2):(cP.tBin):convertTime(1,'day','sec'))';
@@ -145,6 +160,11 @@ h = ProgBar(wStr,'Average Speed Calculations');
 % determines the binned indices
 h.Update(1,'Determining Time Bin Indices...',1/(2+nApp));
 
+% memory allocation
+for j = 1:nApp
+    plotD(j).V = cellfun(@(x)(NaN(length(T),1)),plotD(j).V,'un',0);
+end
+
 % ----------------------------- %
 % --- VELOCITY CALCULATIONS --- %
 % ----------------------------- %
@@ -162,7 +182,7 @@ for i = 1:nExp
     
     % determines the index offset
     Ttot = cell2mat(snTot(i).T);
-    flyok = snTot(i).appPara.flyok;    
+    flyok = snTot(i).iMov.flyok;    
     
     % determines the binned indices (for time length, tBin) and determines the
     % bins which has at least two time points
@@ -191,18 +211,17 @@ for i = 1:nExp
         else
             % if no valid flies then set a NaN array
             V = repmat({NaN(1,length(flyok{j}))},length(indB),1);                     
-        end
-        
-        % memory allocation
-        plotD(j).V = cellfun(@(x)(NaN(length(T),1)),plotD(j).V,'un',0);
+        end        
 
         % sets the raw velocity values into the plotting data struct          
         Vr = num2cell(cell2mat(V),1);
-        for iD = 1:size(indD,2)
-            % sets the velocity values (for all flies) for each day
-            iiN = find(~isnan(indD(:,iD)));            
-            for iFly = find(snTot(i).appPara.flyok{j}(:)')
-                plotD(j).V{iD,iFly}(iiN) = Vr{iFly}(indD(iiN,iD));
+        if ~isempty(Vr)
+            for iD = 1:size(indD,2)
+                % sets the velocity values (for all flies) for each day
+                iiN = ~isnan(indD(:,iD));            
+                for iFly = find(snTot(i).iMov.flyok{j}(:)')
+                    plotD(j).V{iD,iFly,i}(iiN) = Vr{iFly}(indD(iiN,iD));
+                end
             end
         end
     end
@@ -259,7 +278,7 @@ sP.xLim = [0 convertTime(24,'hrs','sec')];
 tMlt = convertTime(1,'sec','hrs');   
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -269,7 +288,7 @@ hP = get(gca,'Parent');
 if (sP.Sub.isComb)
     % case is combining, so remove the titles
     [pF.xLabel.ind,pF.yLabel.ind] = deal(1); 
-    [pF.Legend.String,m,n] = deal(snTot(1).appPara.Name(ind),1,1);
+    [pF.Legend.String,m,n] = deal(snTot(1).iMov.pInfo.gName(ind),1,1);
     for i = 1:length(pF.Title); pF.Title(i).String = ''; end
 else
     % resets the labels
@@ -278,7 +297,7 @@ else
     
     % sets the axis titles
     for i = 1:length(pF.Title)
-        pF.Title(i).String = snTot(1).appPara.Name{i};         
+        pF.Title(i).String = snTot(1).iMov.pInfo.gName{i};         
     end
 end
 

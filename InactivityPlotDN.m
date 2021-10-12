@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Temporal Proportional Activity-Inactivity (Long)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 3 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,11 +21,11 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);  
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);  
     
     % special parameter fields/data struct
-    pData.canComb = length(snTot(1).appPara.flyok) > 1;
+    pData.canComb = length(snTot(1).iMov.ok) > 1;
     pData.hasSP = true;
     pData.sP = initSpecialPara(snTotL,pData);    
 end
@@ -33,6 +34,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Long';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';        
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -91,7 +106,7 @@ pP(5) = setParaFields(a{2},'List',{1,pList},'errType','Signal Error Type',[],{4,
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);   
+nApp = length(snTot.iMov.ok);   
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -102,7 +117,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -144,7 +159,7 @@ end
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 
 % retrieves the parameter struct
 [tBin,tMove] = deal(cP.tBin*60,cP.tMove);
@@ -185,7 +200,7 @@ for i = 1:nExp
 
     % determines the index offset
     Ttot = cell2mat(snTot(i).T);
-    flyok = snTot(i).appPara.flyok;    
+    flyok = snTot(i).iMov.flyok;    
 
     % determines the binned indices (for time length, tBin) and determines the
     % bins which has at least two time points
@@ -199,7 +214,7 @@ for i = 1:nExp
     % calculates the binned activity 
     for j = 1:nApp
         % calculates the inactivity metrics based on the calculation type
-        if (~isempty(snTot(i).Px{j}))
+        if ~isempty(snTot(i).Px{j})
             if strcmp(cP.inactType,'Inactivity Proportion')
                 % updates the waitbar figure
                 wStrNw = sprintf(['Calculating Proportional Inactivity ',...
@@ -298,7 +313,7 @@ sP.xLim = [0 convertTime(24,'hrs','sec')];
 [tMlt,absTime] = deal(convertTime(1,'sec','hrs'),true);
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -308,7 +323,7 @@ hP = get(gca,'Parent');
 if (sP.Sub.isComb)
     % case is combining, so remove the titles    
     [pF.xLabel.ind,pF.yLabel.ind] = deal(1);  
-    [pF.Legend.String,m,n] = deal(snTot(1).appPara.Name(ind),1,1);
+    [pF.Legend.String,m,n] = deal(snTot(1).iMov.pInfo.gName(ind),1,1);
     for i = 1:length(pF.Title); pF.Title(i).String = ''; end    
 else    
     % resets the labels
@@ -317,7 +332,7 @@ else
     
     % sets the axis titles
     for i = 1:length(pF.Title)
-        pF.Title(i).String = snTot(1).appPara.Name{i};         
+        pF.Title(i).String = snTot(1).iMov.pInfo.gName{i};         
     end
 end
 

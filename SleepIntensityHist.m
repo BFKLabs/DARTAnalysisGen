@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Sleep Intensity (Histograms)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 3 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
     [pData.hasSP,pData.hasRS] = deal(true,false);
@@ -31,6 +32,20 @@ end
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+        
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Long';
+rI.Shape = 'None';
+rI.Stim = 'Motor';
+rI.Spec = 'None';
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -75,7 +90,7 @@ pP(4) = setParaFields(a{2},'Number',0.75,'pW','Bar Plot Relative Width',[0 1 fal
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);    
+nApp = length(snTot.iMov.ok);    
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -87,7 +102,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -154,7 +169,7 @@ plotD = initPlotValueStruct(snTot,pData,cP,...
                                  'Hist',[],'HistR',[],'indCombMet','sum');
 
 % other initialisations                             
-nApp = length(snTot(1).appPara.flyok);
+nApp = length(snTot(1).iMov.ok);
 % [Ycount,YcountR] = deal(repmat({zeros(1+cP.sepDN,nGrp)},nApp,1));
                         
 % ---------------------------------------------------- %
@@ -272,7 +287,7 @@ p = plotD{1}(ind);
 col = 'yk';
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %

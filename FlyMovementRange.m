@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Fly Distance Statistics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [3 1 1 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
     [pData.hasSR,pData.hasRC] = deal(true,false);    
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -119,7 +134,7 @@ cP.movType = 'Absolute Distance';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,ok] = deal(length(snTot(1).appPara.flyok),true);
+[nApp,ok] = deal(length(snTot(1).iMov.ok),true);
 nExp = length(snTot);
 
 % sets the calculation parameters
@@ -157,7 +172,7 @@ for i = 1:nExp
 
     % sets the total time and ok flags
     Ttot = cell2mat(snTot(i).T);
-    flyok = snTot(i).appPara.flyok;
+    flyok = snTot(i).iMov.flyok;
 
     % determines the binned indices (for time length, tBin) and determines the
     % bins which has at least two time points
@@ -201,7 +216,12 @@ for i = 1:nApp
     [plotD(i).NH,plotD(i).XH] = deal(NH(1:end)',XH(1:end)');
     
     % calculates the ecdf values (then interpolate to fixed values)
-    [fCDF,xCDF] = ecdf(VT);         
+    if isempty(VT)
+        [xCDF,fCDF] = deal([0,DMax],[0,0]);
+    else
+        [fCDF,xCDF] = ecdf(VT);         
+    end
+    
     if length(xCDF) == 2
         [plotD(i).xCDF,xCDF] = deal([0,DMax]);
         plotD(i).fCDF = interp1(xCDF,[0,0],xCDF);
@@ -246,13 +266,14 @@ hPlt = cell(nApp,1);
 pF = retFormatStruct(pF,2);
 
 % sets the legend strings
-pF.Legend.String = snTot(1).appPara.Name;
-pF.Title(1).String = sprintf('%s (%s)',pF.Title(1).String,snTot(1).appPara.Name{ind});
+grpStr = snTot(1).iMov.pInfo.gName{ind};
+pF.Legend.String = snTot(1).iMov.pInfo.gName;
+pF.Title(1).String = sprintf('%s (%s)',pF.Title(1).String,grpStr);
 
 % sets the colours
 col = num2cell(distinguishable_colors(nApp,'w'),2);
 yLim = [1 10^(ceil(log10(max(p(ind).NH(2:end)))))];
-if yLim(2) == 0
+if (yLim(2) == 0) || (range(yLim) == 0)
     yLim(2) = 10;
 end
 
@@ -266,7 +287,7 @@ else
 end
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');                
+hP = getCurrentAxesProp('Parent');             
                 
 % ------------------------------- %
 % --- SUBPLOT FIGURE CREATION --- %

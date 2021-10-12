@@ -7,8 +7,9 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 
 % sets the function name/type
 pData.Name = 'Overall Tracking Performance';
-pData.Type = 'Indiv';
+pData.Type = {'Indiv'};
 pData.fType = [2 1 1 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
     [pData.hasTime,pData.hasSR] = deal(true,true);
@@ -31,6 +32,20 @@ end
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+        
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -58,7 +73,7 @@ end
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok); 
+nApp = length(snTot.iMov.ok); 
 pF = setFormatFields(1);
 
 % initialises the font structs
@@ -69,7 +84,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -96,7 +111,7 @@ end
 % ------------------------------------------- %
 
 % other initialisations
-flyok = snTot.appPara.flyok;
+flyok = snTot.iMov.flyok;
 nApp = length(flyok);
 T = cell2mat(snTot.T);
 
@@ -112,9 +127,6 @@ h = ProgBar({'Overall Progress'},'Performance Tracking Calculations');
 % ---------------------------- %
 % --- FLY LOCATION SETTING --- %
 % ---------------------------- %
-
-% array dimensioning
-flyok = snTot.appPara.flyok;
 
 % sets the position values for all the apparatus
 for i = 1:nApp
@@ -203,7 +215,7 @@ indF = find(p.T <= sP.xLim(2),1,'last');
 nFly = size(p.Y,1);
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 %
 if (isfield(pP,'isZeitG'))

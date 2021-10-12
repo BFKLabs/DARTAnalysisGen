@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Temporal Proportional Activity-Inactivity (Short)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 2 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);  
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);  
     
     % special parameter fields/data struct
     [pData.hasSP,pData.canComb] = deal(true);
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Short';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';        
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -43,7 +58,7 @@ cP = setParaFields(nPara);
 cP(1) = setParaFields([],'Number',2,'vAct','Activity Threshold (mm/s)',[0.1 10 false]);
 cP(2) = setParaFields([],'Boolean',1,'useAll','Analyse Entire Experiment');
 cP(3) = setParaFields([],'Number',0,'T0','Start Time (min)',[0 inf true],{2,1});
-cP(4) = setParaFields([],'Number',30,'Tdur','Analysis Duration (min)',[10 inf true],{2,1});
+cP(4) = setParaFields([],'Number',30,'Tdur','Analysis Duration (min)',[1 inf true],{2,1});
 
 % sets the tool-tip strings
 cP(1).TTstr = 'The inter-frame velocity threshold used to indicate movement';
@@ -80,7 +95,7 @@ pP(8) = setParaFields(a{1},'Boolean',1,'plotGrid','Show Axis Gridlines');
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);   
+nApp = length(snTot.iMov.ok);   
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -91,7 +106,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -148,7 +163,7 @@ cP.movType = 'Absolute Speed';
 nExp = length(snTot);
 
 % memory allocation
-nApp = length(snTot(1).appPara.flyok);
+nApp = length(snTot(1).iMov.ok);
 plotD = initPlotValueStruct(snTot,pData,cP,...
                         'Tbin',[],'TT',cell(nExp,1),...
                         'Y_mn',[],'Y_sem',[],'Y_sd',[],'Y',[],'YT',[]);
@@ -180,7 +195,7 @@ for i = 1:nExp
     
     % calculates the video frame rate and experiment apparatus indices
     FPS = snTot(i).sgP.fRate/snTot(i).sgP.sRate;
-    iApp = find(~cellfun(@isempty,snTot(i).appPara.flyok));
+    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
     
     % sets the relevant time points and apparatus indices for this expt
     if (cP.useAll)
@@ -204,7 +219,7 @@ for i = 1:nExp
     % calculates the pre/post stimuli velocities for all flies, and
     % bins the values according to their time group bin
     for j = 1:length(iApp)  
-        fok = snTot(i).appPara.flyok{iApp(j)};
+        fok = snTot(i).iMov.flyok{iApp(j)};
         Z = cell2mat(cellfun(@(x)(sum(isMove{j}(x,:))/length(x)),tGrp,'un',0));
         plotD(iApp(j)).Y(1,fok,i) = num2cell(Z,1);        
     end       
@@ -256,7 +271,7 @@ if (cP.useAll)
 end
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -265,23 +280,23 @@ hP = get(gca,'Parent');
 % sets the subplot titles
 if (sP.Sub.isComb)% || (all([m n] == 1))
     % case is combining, so remove the titles
-    pF.Legend.String = snTot(1).appPara.Name;
+    pF.Legend.String = snTot(1).iMov.pInfo.gName;
     for i = 1:length(pF.Title); pF.Title(i).String = ''; end
 elseif (all(cellfun(@isempty,field2cell(pF.Title,'String'))))
     % titles are empty, so reset them to the apparatus names
     for i = 1:length(pF.Title) 
-        pF.Title(i).String = snTot(1).appPara.Name{i}; 
+        pF.Title(i).String = snTot(1).iMov.pInfo.gName{i}; 
     end
 end
 
 % retrieves the formatting struct
-if (isempty(m)); szMx = 1; else; szMx = max([m n]); end
+if isempty(m); szMx = 1; else; szMx = max([m n]); end
 pF = retFormatStruct(pF,szMx);
 
 % sets the legend strings (if combining onto a single figure
-if (sP.Sub.isComb)
+if sP.Sub.isComb
     [pF.Legend.String,m,n] = deal(pF.Legend.String(ind),1,1);
-elseif (~all([m n] == 1))
+elseif ~all([m n] == 1)
     [pF.xLabel.ind,pF.yLabel.ind] = deal(NaN);  
 end
 

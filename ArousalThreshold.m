@@ -9,9 +9,10 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Arousal Threshold';
 pData.Type = {'Pop','Multi'};
 pData.fType = [3 2 3 1 0];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
-if (nargin == 1)
+if nargin == 1
     % parameter data struct initialisation
     snTotL = snTot(1);
     pData.cP = initCalcPara(snTot);
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
     [pData.hasSP,pData.hasRS] = deal(true,false);
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Long';
+rI.Shape = 'None';
+rI.Stim = 'Motor';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -78,7 +93,7 @@ pP(6) = setParaFields(a{2},'Boolean',0,'pltQuart','Plot Inter-Quartile Levels',[
 function pF = initPlotFormat(snTot)
 
 % determines the apparatus count
-nApp = length(snTot.appPara.ok);  
+nApp = length(snTot.iMov.ok);  
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -89,7 +104,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -126,18 +141,34 @@ oP = addYVarField(oP,'Lvl CDF (Immob)','pCDFim',[],Type2,xDep4,1);
 function [plotD,ok] = calcFunc(snTot,pData,gPara,cP)
 
 % initialises the calculation parameters (if not already initialised)
-if (nargin == 3)
+if nargin == 3
     % retrieves the parameter struct
     cP = retParaStruct(pData.cP,gPara);
 end
 
-% determines the currently loaded experimental file is valid for
-% calculating arousal threshold
-if (length(snTot(1).iExpt.Stim(1).sigPara{1}) == 1)
-    eStr = {'Error! Single-phase only stimuli events detected within data set.';
-        'To calculate arousal threshold, choose a multi-phase stimuli experiment.'};
+% determines if the experiment 
+[Ts0,eStr] = deal(getMotorFiringTimes(snTot.stimP),[]);
+if isempty(Ts0)
+    % 
+    eStr = sprintf(['Error! This experimental data set does not ',...
+                    'contain any motor stimuli information.\nTo run ',...
+                    'this function, you must choose a multi-amplitude ',...
+                    'Motot stimuli experiments.']);
+% else
+%     % determines the currently loaded experimental file is valid for
+%     % calculating arousal threshold
+%     if length(snTot(1).iExpt.Stim(1).sigPara{1}) == 1
+%         eStr = sprintf(['Error! Single-phase only stimuli events detected ',...
+%                        'within data set.\nTo calculate arousal threshold, ',...
+%                        'choose a multi-phase Motor stimuli experiment.']);
+%     end
+end
+
+% if there was an error, then output an error to screen and exit
+if ~isempty(eStr)
     waitfor(errordlg(eStr,'Not A Multi-Phase Experiment')); 
-    [plotD,ok] = deal([],false); return
+    [plotD,ok] = deal([],false); 
+    return
 end
 
 % sets the movement calculation type
@@ -148,7 +179,7 @@ cP.movType = 'Absolute Speed';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 nGrp = str2double(cP.nGrp);
 
 % fixed parameters
@@ -157,7 +188,7 @@ T = 1:nGrp;
 
 % sets the daily time group strings
 Tgrp = setTimeGroupStrings(nGrp,cP.Tgrp0);  
-iStim = cellfun(@(x)(sprintf('Stim #%i',x)),num2cell(1:24/length(Tgrp))','un',0);
+iStim = arrayfun(@(x)(sprintf('Stim #%i',x)),(1:24/length(Tgrp))','un',0);
 
 % sets the y-axis level strings
 Nlvl = length(snTot(1).iExpt.Stim(1).sigPara{1})+2;
@@ -166,11 +197,11 @@ yStr = [{'MF'};cellfun(@(x)(sprintf('%.1f',x)),num2cell(...
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,...
-                                 'Tgrp',Tgrp,'pCDF',a,'pCDFim',a,'T',T,...
-                                 'yStr',yStr,'yStrIm',yStr(2:end),'iStim',iStim,...
-                                 'indR',[],'indRIm',[],'indRT',[],'indRImT',[],...
-                                 'indR_md',[],'indR_lq',[],'indR_uq',[],...
-                                 'indRIm_md',[],'indRIm_lq',[],'indRIm_uq',[]);
+                         'Tgrp',Tgrp,'pCDF',a,'pCDFim',a,'T',T,...
+                         'yStr',yStr,'yStrIm',yStr(2:end),'iStim',iStim,...
+                         'indR',[],'indRIm',[],'indRT',[],'indRImT',[],...
+                         'indR_md',[],'indR_lq',[],'indR_uq',[],...
+                         'indRIm_md',[],'indRIm_lq',[],'indRIm_uq',[]);
 
 % ---------------------------------------------------- %
 % --- STIMULI TRACE & IMMOBILITY TIME CALCULATIONS --- %
@@ -192,35 +223,33 @@ for i = 1:nExp
         h.Update(1,wStrNw,i/(1+nExp));
     end
     
-    % sets the video/stimuli time stamps into a single vector
-    if ~isempty(cell2mat(snTot(i).Ts))        
-        % calculates the new sleep intensity data
-        %     [YcountNw,YcountRNw,~,TreactNw] = ...
-        indReactNw = calcArousalThresholdData(snTot(i),cP,h,wOfs);
-        if (isempty(indReactNw))
-            % if the user cancelled, then exit the function
-            [plotD,ok] = deal([],false);
-            return
-        else
-            % otherwise, append the data to the arrays
-            for j = 1:nApp
-                if (snTot(i).appPara.ok(j))
-                    % sets the rows/column indices
-                    xiR = 1:size(indReactNw{j},1);
-                    xiC = 1:size(indReactNw{j},2);
-                    
-                    % sets the raw data for all flies
-                    plotD(j).indR(xiR,xiC,i) = indReactNw{j};
-                    
-                    % sets all the pre-stim moving fly to NaN values
-                    for k = 1:numel(indReactNw{j})
-                        isZ = indReactNw{j}{k} == 0;
-                        indReactNw{j}{k}(isZ) = NaN;
-                    end
-                    
-                    % sets the raw data for the immobile flies
-                    plotD(j).indRIm(xiR,xiC,i) = indReactNw{j};                    
+       
+    % calculates the new sleep intensity data
+    %     [YcountNw,YcountRNw,~,TreactNw] = ...
+    indReactNw = calcArousalThresholdData(snTot(i),cP,h,wOfs);
+    if (isempty(indReactNw))
+        % if the user cancelled, then exit the function
+        [plotD,ok] = deal([],false);
+        return
+    else
+        % otherwise, append the data to the arrays
+        for j = 1:nApp
+            if snTot(i).iMov.ok(j)
+                % sets the rows/column indices
+                xiR = 1:size(indReactNw{j},1);
+                xiC = 1:size(indReactNw{j},2);
+
+                % sets the raw data for all flies
+                plotD(j).indR(xiR,xiC,i) = indReactNw{j};
+
+                % sets all the pre-stim moving fly to NaN values
+                for k = 1:numel(indReactNw{j})
+                    isZ = indReactNw{j}{k} == 0;
+                    indReactNw{j}{k}(isZ) = NaN;
                 end
+
+                % sets the raw data for the immobile flies
+                plotD(j).indRIm(xiR,xiC,i) = indReactNw{j};                    
             end
         end
     end
@@ -288,20 +317,20 @@ fAlpha = 0.4;
 nLvl = size(p(1).pCDF,1) - 2;
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
 % ---------------------------------------- %
 
 % retrieves the formatting struct
-if (isempty(m)); szMx = 1; else; szMx = max([m n]); end
+if isempty(m); szMx = 1; else; szMx = max([m n]); end
 pF = retFormatStruct(pF,szMx);
 
 % sets the y-axis strings
 yStr = [cellfun(@(x)(sprintf('%.1f',x)),num2cell(...
                         linspace(0,1,nLvl))','un',0);{'NR'}];       
-if (pP.incMoving); yStr = [{'MF'};yStr]; end            
+if pP.incMoving; yStr = [{'MF'};yStr]; end            
             
 % sets the y-axis label string
 pF.yLabel.String = 'Arousal Threshold (g)'; 
@@ -316,7 +345,8 @@ hAx = cell(nApp,1);
 
 % day/night background fill object coordinates
 xLim = [1 nGrp]+0.5*[-1 1];
-[xFillD,xFillN,yFill] = deal([xLim(1) mean(xLim)],[mean(xLim) xLim(2)],[-1 nLvl+2]);
+[xFillD,xFillN] = deal([xLim(1) mean(xLim)],[mean(xLim) xLim(2)]);
+yFill = [-1 nLvl+2];
 
 % loops through all the indices plotting the solutions
 for i = 1:nApp
@@ -324,16 +354,18 @@ for i = 1:nApp
     hAx{i} = createSubPlotAxes(hP,[m,n],i);
     
     % creates the plot based on the plot type
-    switch (pP.pType)
+    switch pP.pType
         case ('Box & Whisker') % case is box and whisker plot
             % plots the background image
-            if (pP.pltDN && (nGrp > 1))       
-                fill(xFillD(ix),yFill(iy),'y','FaceAlpha',fAlpha','tag','hDN')
-                fill(xFillN(ix),yFill(iy),'k','FaceAlpha',fAlpha','tag','hDN')        
+            if pP.pltDN && (nGrp > 1)      
+                fill(xFillD(ix),yFill(iy),'y',...
+                                        'FaceAlpha',fAlpha','tag','hDN')
+                fill(xFillN(ix),yFill(iy),'k',...
+                                        'FaceAlpha',fAlpha','tag','hDN')        
             end               
             
             % sets the box/whisker values
-            if (~isempty(p(i).indRT))
+            if ~isempty(p(i).indRT)
                 if (pP.incMoving)
                     Z = p(i).indRT; 
                 else
@@ -341,7 +373,8 @@ for i = 1:nApp
                 end
 
                 % creates the boxplot and removes the outliers
-                h = boxplot(hAx{i},Z,'labels',repmat({''},1,size(Z,2)),'boxstyle','filled'); 
+                h = boxplot(hAx{i},Z,'labels',...
+                            repmat({''},1,size(Z,2)),'boxstyle','filled'); 
                 set(findall(h,'tag','Median'),'Linewidth',2)
                 delete(findall(h,'tag','Outliers'))            
             end
@@ -374,7 +407,7 @@ for i = 1:nApp
                     
             % plots the mean (if checked)
             xi = 0:(nGrp+1);
-            if (pP.pltMedian)
+            if pP.pltMedian
                 % wraps around the median values
                 Ymd = max(0,[mean(Ymd([1 end])),Ymd,mean(Ymd([1 end]))]);
                 
@@ -383,7 +416,7 @@ for i = 1:nApp
             end
             
             % plots the inter-quartile range (if checked)
-            if (pP.pltQuart)
+            if pP.pltQuart
                 % wraps the lower/upper quartile values
                 Ylu = max(0,[mean(Ylu([1 end])),Ylu,mean(Ylu([1 end]))]);
                 Yuq = max(0,[mean(Yuq([1 end])),Yuq,mean(Yuq([1 end]))]);
@@ -395,7 +428,7 @@ for i = 1:nApp
     end
 
     % sets the time markers (if there are enough groups)
-    if (nGrp > 1)                
+    if nGrp > 1                
         % sets the time markers
         NN = 2*(1 + (nGrp >= 4));
         xL = get(hAx{i},'xlim');
@@ -419,22 +452,18 @@ formatMultiXYLabels(hAx,pF,[m,n]);
 resetAxesPos(hAx,m,n,[0.01 0]);
 
 % creates a colour bar for the CDF heatmaps
-if (strcmp(pP.pType,'CDF Heatmap'))
+if strcmp(pP.pType,'CDF Heatmap')
     % creates the colour bar
     hCB = colorbar(hAx{end});    
     set(hCB,'Units','Normalized');
 
     % updates the position of the colour bar    
-    if (m > 1)
+    if m > 1
         % retrieves the width of the colour bar axis
-        if (isHG1)
-            cbPos = get(hCB,'OuterPosition');    
-            wCB = cbPos(3);
-        else
-            cbPos = get(hCB,'Position');
-            hExt = cell2mat(cellfun(@(x)(getTextSize(hAx{1},x)),hCB.TickLabels,'un',0));
-            wCB = cbPos(3) + 0.75*max(hExt(:,3));
-        end    
+        cbPos = get(hCB,'Position');
+        hExt = cell2mat(cellfun(@(x)...
+                        (getTextSize(hAx{1},x)),hCB.TickLabels,'un',0));
+        wCB = cbPos(3) + 0.75*max(hExt(:,3));
         
         % resets the location of the final axes and colour bar position
         resetObjPos(hAx{end},'width',retObjDimPos(hAx(1),3,1));
@@ -469,7 +498,7 @@ function Pstr = getSignifLevelStr(P)
 % ensures the proportions/sample size arrays are vectors
 pLvl = [log10(0.05) -2 -3 -5 -10 -20 -50 -inf];
 ii = find(log10(P) <= pLvl,1,'last'); 
-if (isempty(ii)); ii = 0; end
+if isempty(ii); ii = 0; end
 
 % sets the p-level signficance strings
 switch (ii)
@@ -493,7 +522,7 @@ if (nargin == 2); yMin = 0; end
 
 % memory allocation
 pCDF = ones(N,1);
-if (all(y <= yMin)) || (all(isnan(y))); return; end
+if all(y <= yMin) || all(isnan(y)); return; end
 
 % calculates the ecdf and set the probabilities
 [f,x] = ecdf(y(y>=yMin)); 

@@ -7,8 +7,9 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 
 % sets the function name/type
 pData.Name = '1D Fly Position Traces';
-pData.Type = 'Indiv';
+pData.Type = {'Indiv'};
 pData.fType = [2 1 1 2];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);     
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);     
     
     % special parameter fields/data struct
     [pData.hasTime,pData.hasSR] = deal(true);    
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = '1D';
+rI.Stim = 'None';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -65,7 +80,7 @@ pP(3) = setParaFields(a{1},'Boolean',1,'pltRej','Plot Rejected Flies');
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);  
+nApp = length(snTot.iMov.ok);  
 pF = setFormatFields(1);
 
 % initialises the font structs
@@ -76,7 +91,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -108,7 +123,7 @@ end
 % ------------------------------------------- %
 
 % other initialisations
-flyok = snTot.appPara.flyok;
+flyok = snTot.iMov.flyok;
 [nApp,ok] = deal(length(flyok),true);
 T = cell2mat(snTot.T);
 
@@ -180,11 +195,11 @@ indF = find(p.T <= sP.xLim(2),1,'last');
 [tMlt,tUnits] = getTimeScale(snTot.T{end}(end));
 
 % sets the other parameters
-flyok = snTot.appPara.flyok{ind};
+flyok = snTot.iMov.flyok{ind};
 [nFly,Px] = deal(size(p.Y,2),p.Y);
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %

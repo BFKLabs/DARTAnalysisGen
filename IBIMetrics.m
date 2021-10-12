@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Inter-Bout Interval Statistics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 1 1 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);  
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);  
     
     % special parameter fields/data struct
     [pData.hasSP,pData.hasRC] = deal(true,false);
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -89,6 +104,7 @@ function oP = initOutputPara(snTot)
 % initialisations
 oP = setupOutputParaStruct(snTot);
 [Type1,Type2,Type3,xDep,Stats] = deal(3,2,4,{'xB'},{'Comp'});
+oP.sepDay = false;
 
 % sets the independent output variables
 oP = addXVarField(oP,'Duration (sec)','xB','Other');
@@ -133,7 +149,7 @@ cP.movType = 'Absolute Speed';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,...
@@ -154,7 +170,7 @@ h = ProgBar(wStr,'Activity Calculations');
 nFly = zeros(nApp,1);
 for i = 1:length(snTot)
     % sets the number of flies in the experiment
-    nFly = max(nFly,cellfun(@length,snTot(i).appPara.flyok));
+    nFly = max(nFly,cellfun(@length,snTot(i).iMov.flyok));
 end
 
 % ------------------------------------------------------- %
@@ -172,7 +188,7 @@ for i = 1:nExp
 
     % calculates the video frame rate and experiment apparatus indices
     FPS = 1/mean(diff(T{i}));
-    iApp = find(~cellfun(@isempty,snTot(i).appPara.flyok));
+    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
     
     % uses all the time points
     ii = 1:length(T{i});
@@ -239,7 +255,7 @@ for i = 1:nApp
                 
             % sets the raw action initiation values
             kk = ~cellfun(@isempty,tGrpStop);
-            ifok = find(snTot(j).appPara.flyok{i});
+            ifok = find(snTot(j).iMov.flyok{i});
             IBIR(j,ifok(kk)) = tGrpStop(kk);
         end        
     end
@@ -425,7 +441,7 @@ if (~isempty(hLg))
     pAx = get(hAx,'position');
     resetObjPos(hAx,'width',lgP(1) - (pAx(1)+0.025))    
 else
-    setGroupString(hAx,pF,xi,snTot(1).appPara.Name(ind),30);
+    setGroupString(hAx,pF,xi,snTot(1).iMov.pInfo.gName(ind),30);
 end
     
 % ----------------------------------------------------------------------- %

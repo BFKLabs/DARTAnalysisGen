@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Aggregate Proportional Activity-Inactivity (Short)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 2 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);  
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);  
     
     % special parameter fields/data struct
     [pData.hasSP,pData.hasRC] = deal(true,false);
@@ -31,6 +32,20 @@ end
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Short';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';        
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -43,7 +58,7 @@ cP = setParaFields(nPara);
 cP(1) = setParaFields([],'Number',2,'vAct','Activity Threshold (mm/s)',[0.1 10 false]);
 cP(2) = setParaFields([],'Boolean',1,'useAll','Analyse Entire Experiment');
 cP(3) = setParaFields([],'Number',0,'T0','Start Time (min)',[0 inf true],{2,1});
-cP(4) = setParaFields([],'Number',30,'Tdur','Analysis Duration (min)',[10 inf true],{2,1});
+cP(4) = setParaFields([],'Number',30,'Tdur','Analysis Duration (min)',[1 inf true],{2,1});
 
 % sets the tool-tip strings
 cP(1).TTstr = 'The inter-frame velocity threshold used to indicate movement';
@@ -170,7 +185,7 @@ cP.movType = 'Absolute Speed';
 % ------------------------------------------- %
 
 % array dimensions
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 
 % initialises the plot data struct
 plotD = initPlotValueStruct(snTot,pData,cP,...
@@ -210,7 +225,7 @@ for i = 1:nExp
     
     % calculates the video frame rate
     FPS = snTot(i).sgP.fRate/snTot(i).sgP.sRate;
-    iApp = find(~cellfun(@isempty,snTot(i).appPara.flyok));
+    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
         
     % sets the relevant time points and apparatus indices for this expt
     if (cP.useAll)
@@ -231,7 +246,7 @@ for i = 1:nExp
     for j = 1:length(iApp)  
         % initialisations        
         [k,A] = deal(iApp(j),sum(isMove{j}(isOK,:),1)/sum(isOK));
-        ifok = find(snTot(i).appPara.flyok{k});
+        ifok = find(snTot(i).iMov.flyok{k});
         
         % sets the metric values
         plotD(k).Tw(1,ifok,i) = num2cell(60*A);
@@ -286,8 +301,8 @@ p = plotD{1}(ind);
 % parameters
 yOfs = 0.01;
 
-% retrieves the parent object
-hP = get(gca,'Parent');
+% retrieves the panel object handle
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -297,7 +312,7 @@ hP = get(gca,'Parent');
 pF = retFormatStruct(pF,1);
 
 % sets the 
-StrT = snTot(1).appPara.Name(ind);
+StrT = snTot(1).iMov.pInfo.gName(ind);
 
 % ----------------------- %
 % --- FIGURE CREATION --- %

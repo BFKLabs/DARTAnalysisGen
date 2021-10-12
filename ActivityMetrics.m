@@ -9,9 +9,10 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Activity Metrics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 2 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
-if (nargin == 1)    
+if nargin == 1
     % parameter data struct initialisation
     snTotL = snTot(1);
     pData.cP = initCalcPara(snTot);
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);  
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);  
     
     % special parameter fields/data struct
     [pData.hasSP,pData.hasRC] = deal(true,false);
@@ -31,6 +32,20 @@ end
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Short';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -47,8 +62,8 @@ a = {'1 - General','2 - Thresholds'};
 cP(1) = setParaFields(a{1},'Boolean',0,'useRegion','Split Activity By Region',[],{0,~is2D});
 cP(2) = setParaFields(a{1},'Boolean',1,'useAll','Analyse Entire Experiment');
 cP(3) = setParaFields(a{1},'Number',0,'T0','Start Time (min)',[0 inf true],{2,1});
-cP(4) = setParaFields(a{1},'Number',60,'Tdur','Analysis Duration (min)',[10 inf true],{2,1});
-cP(5) = setParaFields(a{2},'Number',2,'vAct','Activity Threshold (mm/s)',[0.1 10 false]);
+cP(4) = setParaFields(a{1},'Number',60,'Tdur','Analysis Duration (min)',[1 inf true],{2,1});
+cP(5) = setParaFields(a{2},'Number',3,'vAct','Activity Threshold (mm/s)',[0.1 10 false]);
 cP(6) = setParaFields(a{2},'Number',0.2,'tMove','Movement Start Duration (s)',[0.1 10 false]);
 cP(7) = setParaFields(a{2},'Number',3,'rTol','Outer Edge Region Distance (mm)',[1 10 false],{1,2});
 
@@ -104,6 +119,8 @@ oP = addXVarField(oP,'Activity Region','ioStr','Group');
 oP = addXVarField(oP,'Activity Region','iotStr','Group');
 
 % sets the dependent output variables
+oP = addYVarField(oP,'Start Count','NS',Stats1,Type1,xDep1,1);
+oP = addYVarField(oP,'Stop Time','TS',Stats1,Type1,xDep1,1);
 oP = addYVarField(oP,'Activity Initiation','AI',Stats1,Type1,xDep1,1);
 oP = addYVarField(oP,'Activity Initiation (Mean)','AI_mn',[],Type2,xDep1);
 oP = addYVarField(oP,'Activity Initiation (SEM)','AI_sem',[],Type2,xDep1);
@@ -153,7 +170,7 @@ cP.movType = 'Absolute Speed';
 
 % array dimensioning and memory allocation
 nR = cP.useRegion + 1;
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 
 % sets the region strings
 ioStr = {'Inner','Outer'};
@@ -167,7 +184,7 @@ plotD = initPlotValueStruct(snTot,pData,cP,...
                             'MBL_md',[],'MBL_lq',[],'MBL_uq',[],...
                             'IBI',[],'IBI_mn',[],'IBI_sem',[],...
                             'IBI_md',[],'IBI_lq',[],'IBI_uq',[],...
-                            'ioStr',ioStr,'iotStr',iotStr);
+                            'NS',[],'TS',[],'ioStr',ioStr,'iotStr',iotStr);
 
 % other memory allocations                             
 [I,OE] = deal(cell(nApp,nExp));
@@ -193,7 +210,7 @@ for i = 1:nExp
     
     % calculates the video frame rate and experiment apparatus indices
     FPS = snTot(i).sgP.fRate/snTot(i).sgP.sRate;
-    iApp = find(~cellfun(@isempty,snTot(i).appPara.flyok));
+    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
     
     % sets the relevant time points and apparatus indices for this expt
     if (cP.useAll)
@@ -260,7 +277,7 @@ for i = 1:nApp
     for j = 1:nExp        
         if ~isempty(I{i,j})
             % sets the acceptance flags            
-            ifok = find(snTot(j).appPara.flyok{i});
+            ifok = find(snTot(j).iMov.flyok{i});
             
             % groups the frames where the fly has moved. from this,
             % calculate the duration of these movement events.
@@ -348,12 +365,13 @@ for i = 1:nApp
             
                 % sets the mean AI values for each fly in the current
                 % experiment (only if fly is within specific region)
-                tStop = NaN(size(nStart));
+                [tStop,dnS] = deal(NaN(size(nStart)),zeros(size(nStart)));
                 for j2 = jj
                     if (nStart(j2) > 0)
                         % removes the start event (if it is the first)
                         ii2 = find(ii{j2});
                         if (ii2(1) == 1)
+                            dnS(j2) = 1;
                             [nStart(j2),ii2] = deal(nStart(j2)-1,ii2(2:end));
                         end
                         
@@ -368,6 +386,8 @@ for i = 1:nApp
                 % calculates the final AI values
                 for k2 = 1:length(ifok)
                     plotD(i).AI{1,ifok(k2),j}(k) = nStart(k2)/tStop(k2);
+                    plotD(i).NS{1,ifok(k2),j}(k) = nStart(k2)+dnS(k2);
+                    plotD(i).TS{1,ifok(k2),j}(k) = tStop(k2);
                 end
             end                    
         end        
@@ -426,7 +446,11 @@ xi = 1:length(ind);
 pF.Title.String = pP.pMet;
 
 % sets the x-axis strings
-xStr = snTot(1).appPara.Name(ind);
+if isfield(snTot(1).iMov,'Name')
+    xStr = snTot(1).iMov.Name(ind);
+else
+    xStr = snTot(1).iMov.pInfo.gName(ind);
+end
 
 % ----------------------- %
 % --- FIGURE CREATION --- %
@@ -460,7 +484,7 @@ if (cP.useRegion)
     if (pP.grpType)
         pF.Legend.String = lStr;
     else
-        pF.Legend.String = snTot(1).appPara.Name;
+        pF.Legend.String = snTot(1).iMov.pInfo.gName;
         xStr = lStr;
     end
     

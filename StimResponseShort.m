@@ -9,6 +9,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Stimuli Response Curve Fitting (Short)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 2 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);    
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);    
     
     % special parameter fields/data struct
     [pData.hasSR,pData.hasRS] = deal(true,false);
@@ -31,6 +32,20 @@ end
 % ----------------------------------------------------------------------- %
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
+
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+        
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Short';
+rI.Shape = 'None';
+rI.Stim = 'Motor';
+rI.Spec = 'None';
 
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -108,7 +123,7 @@ pP(7) = setParaFields(a{1},'Boolean',0,'plotGridT','Plot Stimuli Response Trace 
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-[nApp,nSub] = deal(length(snTot.appPara.ok),8);
+[nApp,nSub] = deal(length(snTot.iMov.ok),8);
 pF = setFormatFields(nSub);
 
 % initialises the font structs
@@ -145,7 +160,7 @@ pF.yLabel(8).String = 'Time (min)';
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Axis(1).String{i} = snTot.appPara.Name{i};
+    pF.Axis(1).String{i} = snTot.iMov.pInfo.gName{i};
 end
 
 % sets the font sizes for the inset axes
@@ -241,8 +256,8 @@ end
 
 % memory allocation
 aok = cell2mat(cellfun(@(x)(field2cell(...
-                    field2cell(x,'appPara',1),'ok')),num2cell(snTot))');
-nApp = length(snTot(1).appPara.flyok);
+                    field2cell(x,'iMov',1),'ok')),num2cell(snTot))');
+nApp = length(snTot(1).iMov.ok);
 plotD = initPlotValueStruct(snTot,pData,cP,'gType',grpStim,...
                          'T',T,'iStim',iStim,'iStimS',iStimS,'Hist',[],...
                          'Y',[],'Y_rel',[],'Y_sem',[],'Y_fit',[],...
@@ -261,8 +276,9 @@ cP.nGrp = num2str(nStim);
 
 % retrieves the stimuli start/finish times
 [stimP,sTrain] = field2cell(snTot,{'stimP','sTrainEx'});
-[Ts,Tf] = getStimTimes(stimP,sTrain,'Motor');
-[Ts,Tf] = deal(Ts{1},Tf{1});
+Ts = cellfun(@(x)(getMotorFiringTimes(x)),stimP,'un',0);
+% [Ts,Tf] = getStimTimes(stimP,sTrain,'Motor');
+% [Ts,Tf] = deal(Ts{1},Tf{1});
 
 % ---------------------------------%
 % --- STIMULI TRACE EXTRACTION --- %
@@ -295,7 +311,7 @@ for i = 1:nExp
     end
         
     % sets the video/stimuli time stamps into a single vector
-    [flyok,Ttot] = deal(snTot(i).appPara.flyok,cell2mat(snTot(i).T));
+    [flyok,Ttot] = deal(snTot(i).iMov.flyok,cell2mat(snTot(i).T));   
 %     Ts = snTot(i).Ts(~cellfun(@isempty,snTot(i).Ts));    
     if ~isempty(Ts{i})
         % sets the indices for the pre/post stimuli phases
@@ -513,7 +529,7 @@ end
 
 % if the current data set is empty, then exit the function
 aok = any(cell2mat(cellfun(@(x)(field2cell(...
-                field2cell(x,'appPara',1),'ok')),num2cell(snTot))'),2);
+                field2cell(x,'iMov',1),'ok')),num2cell(snTot))'),2);
 if (~any(aok(unique(iApp)))); return; end    
 
 % ---------------------------------------- %
@@ -521,11 +537,12 @@ if (~any(aok(unique(iApp)))); return; end
 % ---------------------------------------- %
 
 % sets the legend strings
-if (grpStim)
-    lStr = cellfun(@(x)(sprintf('Stimuli #%i',x)),num2cell(1:nApp)','un',0);    
-    pF.Title(1).String = sprintf('Stimuli Response (%s)',snTot(1).appPara.Name{iApp});
+if grpStim
+    grpStr = snTot(1).iMov.pInfo.gName{iApp};
+    lStr = arrayfun(@(x)(sprintf('Stimuli #%i',x)),(1:nApp)','un',0);    
+    pF.Title(1).String = sprintf('Stimuli Response (%s)',grpStr);
 else
-    lStr = snTot(1).appPara.Name';    
+    lStr = snTot(1).iMov.pInfo.gName';    
 end
 
 % sets the main plot ylabel string and offset amount
@@ -547,8 +564,8 @@ if (all(p.kA_mn(~isnan(p.kA_mn(iApp))) < 5e-3))
     pF.yLabel(6).String = 'Time (sec)';        
 end
     
-% retrieves the parent object handle
-hP = get(gca,'parent');
+% retrieves the panel object handle
+hP = getCurrentAxesProp('Parent');
 
 % --------------------------------- %
 % --- PLOT AXES INITIALISATIONS --- %
@@ -723,19 +740,12 @@ if (pP.incMet)
         % sets the legend strings
         pF.Legend.String = cellfun(@(x,y)(sprintf('%s (N = %i)',x,y)),...
                             lStr(:),num2cell(p.Hist(:)),'un',0);                     
-        if (isHG1)
-            hBar = sort(findobj(hAxIns{1},'type','patch'));
-            if (isempty(hBar))
-                hBar = sort(findall(get(hAxIns{1},'parent'),'type','patch')); 
-            end    
-        else
-            hBar = cell(nApp,1);
-            hBar0 = findall(get(hAxIns{1},'Parent'),'tag','hBar');
-            
-            for j = 1:nApp
-                hBarNw = findall(hBar0,'UserData',j);
-                hBar{j} = hBarNw(1);
-            end
+        hBar = cell(nApp,1);
+        hBar0 = findall(get(hAxIns{1},'Parent'),'tag','hBar');
+
+        for j = 1:nApp
+            hBarNw = findall(hBar0,'UserData',j);
+            hBar{j} = hBarNw(1);
         end
         
         % creates the legend object

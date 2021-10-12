@@ -8,6 +8,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Population 2D Heatmaps';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 1 1 3];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)
@@ -19,8 +20,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);
     
     % special parameter fields/data struct
     [pData.hasSP,pData.hasRC,pData.hasRS] = deal(true,true,false);
@@ -31,6 +32,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = '2D (Circle)';
+rI.Stim = 'None';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -61,7 +76,7 @@ pP(1) = setParaFields([],'Boolean',1,'pltLog','Plot Logarithmic Heatmap Values')
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);
+nApp = length(snTot.iMov.ok);
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -72,7 +87,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -117,7 +132,7 @@ end
 
 % array dimensions
 dnDel = 5;
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.ok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,'Ihm',[]);
@@ -153,16 +168,19 @@ for i = 1:nExp
     end
 
     % calculates the video frame rate and experiment apparatus indices
-    iApp = find(~cellfun(@isempty,snTot(i).appPara.flyok));    
+    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));    
     
     % sets the relevant x/y-locations for the current experiment  
     [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp);
-
+    if ~iscell(dPx)
+        [dPx,dPy,R] = deal({dPx},{dPy},{R});
+    end
+    
     % determines the day/night time points
-    if (isDN)
+    if isDN
         isDay = detDayNightTimePoints(snTot(i));
-    else
-        isDay = true(size(dPx{1},1),1);
+    else        
+        isDay = true(size(dPx{1},1),1);  
     end
     
     % determines which trace belongs to which sub-region. from this, scale
@@ -244,8 +262,8 @@ if (pP.pltLog)
     Ihm = cellfun(@(x)(log10(x+1)),Ihm,'un',0);
 end
 
-% retrieves the parent axis
-hP = get(gca,'parent');
+% retrieves the panel object handle
+hP = getCurrentAxesProp('Parent');
 
 % memory allocation
 hAx = cell(nApp,1);
@@ -301,11 +319,9 @@ for i = 1:nApp
     formatPlotAxis(hAx{i},pF,i);      
         
     % sets the x/y axis limits    
-    set(hAx{i},'box','off','xcolor','w','ycolor','w')                            
-    if (~isHG1)
-        xL = get(hAx{i},'xlim');
-        set(hAx{i},'xlim',xL + 0.001*diff(xL)*[-1 1]);
-    end
+    set(hAx{i},'box','off','xcolor','w','ycolor','w')
+    xL = get(hAx{i},'xlim');
+    set(hAx{i},'xlim',xL + 0.001*diff(xL)*[-1 1]);
 end    
     
 % ----------------------------------------------------------------------- %

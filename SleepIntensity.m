@@ -10,6 +10,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Sleep Intensity (Stimuli Response)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 3 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -21,8 +22,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);  
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);  
     
     % special parameter fields/data struct
     [pData.hasSR,pData.hasSP,pData.hasRS] = deal(true,true,false);
@@ -33,6 +34,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',false);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Long';
+rI.Shape = 'None';
+rI.Stim = 'Motor';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -147,7 +162,7 @@ if (Type == 1)
     pF.yLabel(1).Font.FontSize = 16;
 else
     % memory allocation
-    nApp = length(snTot.appPara.ok);    
+    nApp = length(snTot.iMov.ok);    
     pF = setFormatFields(nApp);
 
     % initialises the font structs
@@ -159,7 +174,7 @@ else
 
     % sets the apparatus names as the titles
     for i = 1:nApp
-        pF.Title(i).String = snTot.appPara.Name{i};
+        pF.Title(i).String = snTot.iMov.pInfo.gName{i};
     end    
 end
     
@@ -229,7 +244,7 @@ end
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 tBin = str2double(cP.nBin);
 
 % memory allocation
@@ -240,7 +255,8 @@ tBin = str2double(cP.nBin);
 T = setStimTimeVector(cP);
 
 % ensures to include time bins of adequate length
-dTs = cellfun(@(x)(min(diff(cell2mat(x)))),field2cell(snTot,'Ts'));
+Ts0 = arrayfun(@(x)(getMotorFiringTimes(x.stimP)),snTot,'un',0);
+dTs = cellfun(@(x)(min(diff(x))),Ts0);
 Tbin = Tbin(Tbin <= max(convertTime(dTs,'sec','min')));
 
 % sets the group strings  
@@ -426,16 +442,16 @@ pF = pData.pF;
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %
 
-
-% retrieves the object handle of the panel object
-hP = get(gca,'Parent');
+% retrieves the panel object handle
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
 % ---------------------------------------- %
 
 % sets the title string
-pF.Title(1).String = sprintf('%s (%s)',pF.Title(1).String,snTot(1).appPara.Name{sP.pInd});
+grpStr = snTot(1).iMov.pInfo.gName{sP.pInd};
+pF.Title(1).String = sprintf('%s (%s)',pF.Title(1).String,grpStr);
 
 % ----------------------- %
 % --- FIGURE CREATION --- %

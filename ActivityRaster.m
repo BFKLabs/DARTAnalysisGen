@@ -9,9 +9,10 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Activity Rasterplot (Short)';
 pData.Type = {'Indiv','Multi'};
 pData.fType = [1 1 2 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
-if (nargin == 1)    
+if nargin == 1
     % parameter data struct initialisation
     snTotL = snTot(1);
     pData.cP = initCalcPara(snTot);
@@ -20,8 +21,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);  
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);  
     
     % special parameter fields/data struct
     pData.hasSP = true;
@@ -32,6 +33,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[]);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'Short';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';
+
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -40,7 +55,7 @@ nPara = 4;
 cP = setParaFields(nPara);
 
 % sets the parameter fields
-cP(1) = setParaFields([],'Number',2,'vAct','Activity Threshold (mm/s)',[0.1 10 false]);
+cP(1) = setParaFields([],'Number',3,'vAct','Activity Threshold (mm/s)',[0.1 10 false]);
 cP(2) = setParaFields([],'Boolean',1,'useAll','Analyse Entire Experiment');
 cP(3) = setParaFields([],'Number',0,'T0','Start Time (min)',[0 inf true],{2,1});
 cP(4) = setParaFields([],'Number',30,'Tdur','Analysis Duration (min)',[10 inf true],{2,1});
@@ -55,14 +70,11 @@ cP(4).TTstr = 'The duration period of the analysis';
 function pP = initPlotPara(snTot)
 
 % retrieves the stimuli marker time-stamps
-if isfield(snTot,'Ts')
-    Ts = cell2mat(snTot(1).Ts);
-else
-    Ts = [];
-end
+Ts = arrayfun(@(x)(getMotorFiringTimes(x.stimP)),snTot,'un',0);
+hasStim = ~any(cellfun(@isempty,Ts));
 
 % initialises the parameter struct
-nPara = 4 + ~isempty(Ts);                      
+nPara = 4 + hasStim;                      
 pP = setParaFields(nPara);
 
 % tab list headings
@@ -75,7 +87,7 @@ pP(3) = setParaFields(a{1},'Boolean',false,'showNum','Show Fly Index Numbering')
 pP(4) = setParaFields(a{1},'Boolean',false,'setEqual','Set Equal Index Counts');
 
 % only set this field if there are stimuli events present in expt
-if ~isempty(Ts)
+if hasStim
     pP(5) = setParaFields(a{1},'Boolean',true,'showStim','Show Stimuli Markers');
 end
 
@@ -83,7 +95,7 @@ end
 function pF = initPlotFormat(snTot)
 
 % determines the apparatus count
-nApp = length(snTot.appPara.ok);   
+nApp = length(snTot.iMov.ok);   
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -94,7 +106,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -141,7 +153,7 @@ cP.movType = 'Absolute Speed';
 nExp = length(snTot);
 
 % memory allocation
-nApp = length(snTot(1).appPara.ok);
+nApp = length(snTot(1).iMov.ok);
 plotD = initPlotValueStruct(snTot,pData,cP,'T',[],'TT',[],'I',[],'IT',[]);                        
 [I,TT] = deal(cell(nApp,nExp),cell(1,nExp));
 
@@ -164,7 +176,7 @@ for i = 1:nExp
 
     % calculates the video frame rate and experiment apparatus indices
     FPS = snTot(i).sgP.fRate/snTot(i).sgP.sRate;
-    iApp = find(~cellfun(@isempty,snTot(i).appPara.flyok));
+    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
     
     % sets the relevant time points and apparatus indices for this expt
     if cP.useAll
@@ -189,7 +201,7 @@ for i = 1:nExp
     % sets the 
     TT{i} = Tmid(isOK);
     for j = 1:length(isMove)
-        fok = snTot(i).appPara.flyok{iApp(j)};
+        fok = snTot(i).iMov.flyok{iApp(j)};
         plotD(iApp(j)).I(1,fok,i) = num2cell(isMove{j}(isOK,:),1);
         plotD(iApp(j)).TT{i} = TT{i}*60;
     end
@@ -232,6 +244,9 @@ pP = retParaStruct(pData.pP);
 sP = retParaStruct(pData.sP);
 pF = pData.pF;
 
+% creates a loadbar
+h = ProgressLoadbar('Creating Activty Rasterplot...');
+
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %
@@ -270,7 +285,9 @@ pGray = 0.8;
 % ---------------------------------------- %
 
 % titles are empty, so reset them to the apparatus names
-for i = 1:length(pF.Title); pF.Title(i).String = snTot(1).appPara.Name{i}; end
+for i = 1:length(pF.Title)
+    pF.Title(i).String = snTot(1).iMov.pInfo.gName{i}; 
+end
 
 % sets the output data
 pData.pF = pF;
@@ -320,8 +337,8 @@ for j = 1:nApp
     colormap('gray');    
     
     % plots the SEM filled regions (if set)
-    if (isfield(pP,'showStim'))
-        if (pP.showStim)
+    if isfield(pP,'showStim')
+        if pP.showStim
             for i = 1:length(iStim)
                 plot(iStim(i)*[1 1],[0 size(I,1)]+0.5,'r','linewidth',3)
             end
@@ -360,6 +377,10 @@ if (ismac)
         plot(get(hAx{i},'xlim'),(min(get(hAx{i},'ylim'))+eps)*[1 1],'k','linewidth',1.5) 
     end
 end
+
+% creates a loadbar
+pause(0.05);
+try; delete(h); end
     
 % ----------------------------------------------------------------------- %
 % ---                         OUTPUT FUNCTION                         --- %

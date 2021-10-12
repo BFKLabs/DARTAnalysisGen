@@ -10,6 +10,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 pData.Name = 'Population Sleep Metrics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 1 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -21,8 +22,8 @@ if (nargin == 1)
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
     isLong = ~detIfShortExpt(field2cell(snTotL,'T'));
@@ -34,6 +35,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';        
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -90,7 +105,7 @@ pP(4).TTstr = 'The rate over which the sleep bouts are calculated';
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);    
+nApp = length(snTot.iMov.ok);    
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -102,7 +117,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -143,7 +158,7 @@ end
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).appPara.flyok),length(snTot),true);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 nGrp = str2double(cP.nGrp);
 
 % fixed parameters
@@ -194,7 +209,7 @@ for i = 1:nExp
 
     % sets the total time and ok flags
     Ttot = cell2mat(snTot(i).T);
-    flyok = snTot(i).appPara.flyok;
+    flyok = snTot(i).iMov.flyok;
     
     % determines the binned indices (for time length, tBin) and determines 
     % the bins which has at least two time points
@@ -299,7 +314,7 @@ isComb = strcmp(pP.pMet,'Combined Bout & Duration');
 varargout{1} = pData;
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -565,7 +580,8 @@ if (nGrp == 1)
     resetAxesPos({hAxB},m,n);
         
     % sets the group strings
-    setGroupString(hAxB(1),pF(1),xi,snTot(1).appPara.Name(ind),tRot,-0.005);
+    grpName = snTot(1).iMov.pInfo.gName(ind);
+    setGroupString(hAxB(1),pF(1),xi,grpName,tRot,-0.005);
     
     % resets the 2nd-axis location (if it exists)
     if (length(hAxB) > 1)

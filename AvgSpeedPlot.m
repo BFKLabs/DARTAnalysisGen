@@ -7,8 +7,9 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 
 % sets the function name/type
 pData.Name = 'Population Movement (Full Experiment)';
-pData.Type = 'Pop';
+pData.Type = {'Pop'};
 pData.fType = [1 1 1 1];
+pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
 if nargin == 1   
@@ -20,11 +21,11 @@ if nargin == 1
     pData.pF = initPlotFormat(snTotL);
     
     % sets the apparatus name/count
-    pData.appName = snTotL.appPara.Name;
-    pData.nApp = length(snTotL.appPara.Name);   
+    pData.appName = snTotL.iMov.pInfo.gName;
+    pData.nApp = length(pData.appName);   
     
     % special parameter fields/data struct
-    pData.canComb = length(snTot(1).appPara.flyok) > 1;
+    pData.canComb = length(snTot(1).iMov.ok) > 1;
     [pData.hasSP,pData.hasTime] = deal(true);
     pData.sP = initSpecialPara(snTotL,pData);    
 end
@@ -33,6 +34,20 @@ end
 % ---                 PARAMETER STRUCT SETUP FUNCTIONS                --- %
 % ----------------------------------------------------------------------- %
 
+% --- sets the function required information struct
+function rI = initFuncReqInfo(pData)
+
+% memory allocation
+rI = struct('Scope',[],'Dur',[],'Shape',[],...
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
+
+% sets the struct fields
+rI.Scope = setFuncScopeString(pData.Type);
+rI.Dur = 'None';
+rI.Shape = 'None';
+rI.Stim = 'None';
+rI.Spec = 'None';
+        
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
@@ -55,7 +70,8 @@ function pP = initPlotPara(snTot)
 
 % initialises the parameter struct
 isLong = ~detIfShortExpt(field2cell(snTot,'T'));
-hasStim = false;            % FINISH ME!
+Ts = getMotorFiringTimes(snTot.stimP);
+hasStim = ~isempty(Ts);
 nPara = 2 + hasStim + 2*isLong;
 pP = setParaFields(nPara);
 
@@ -85,7 +101,7 @@ end
 function pF = initPlotFormat(snTot)
 
 % memory allocation
-nApp = length(snTot.appPara.ok);  
+nApp = length(snTot.iMov.ok);  
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -96,7 +112,7 @@ pF.Axis = setFormatFields([],[]);
 
 % sets the apparatus names as the titles
 for i = 1:nApp
-    pF.Title(i).String = snTot.appPara.Name{i};
+    pF.Title(i).String = snTot.iMov.pInfo.gName{i};
 end
 
 % --- initialises the output data parameter struct --- %
@@ -134,9 +150,9 @@ end
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,ok] = deal(length(snTot.appPara.flyok),true);
+[nApp,ok] = deal(length(snTot.iMov.ok),true);
 Ttot = cell2mat(snTot.T);
-flyok = snTot.appPara.flyok;
+flyok = snTot.iMov.flyok;
 
 % determines the binned indices (for time length, tBin) and determines the
 % bins which has at least two time points
@@ -179,7 +195,7 @@ for j = 1:nApp
     % determines if there any valid flies in the group
     if any(flyok{j})
         % only calculate if values exist...    
-        if (~isempty(snTot.Px{j}))    
+        if ~isempty(snTot.Px{j})   
             % calculates the binned fly movement speed/midline crossings
             V = calcBinnedFlyMovement(snTot,Ttot,indB,cP,j,flyok{j});
         else
@@ -192,7 +208,7 @@ for j = 1:nApp
     end
     
     % removes any empty speed regions from the time array
-    if (j == 1); isNE = ~cellfun(@isempty,V); end
+    if j == 1; isNE = ~cellfun(@isempty,V); end
     plotD(j).Tf = T(isNE);
     
     % sets the raw velocity values            
@@ -237,7 +253,7 @@ nApp = length(ind); if (nApp == 0); return; end
 p = plotD{1}(ind);
 
 % if the DN parameters are not, then set default values
-if (~isfield(pP,'pltDN'))
+if ~isfield(pP,'pltDN')
     [pP.pltDN,pP.isZeitG,absTime] = deal(false);    
 else
     absTime = true;
@@ -252,10 +268,10 @@ tMlt = getTimeScale(snTot.T{end}(end));
 % ---------------------------------------- %
 
 % sets the subplot titles
-if (sP.Sub.isComb)
+if sP.Sub.isComb
     % case is combining, so remove the titles    
     [pF.xLabel.ind,pF.yLabel.ind] = deal(1);  
-    [pF.Legend.String,m,n] = deal(snTot.appPara.Name(ind),1,1);
+    [pF.Legend.String,m,n] = deal(snTot.iMov.pInfo.gName(ind),1,1);
     for i = 1:length(pF.Title); pF.Title(i).String = ''; end    
 else    
     % resets the labels
@@ -264,13 +280,13 @@ else
     
     % sets the axis titles
     for i = 1:length(pF.Title)
-        pF.Title(i).String = snTot.appPara.Name{i};         
+        pF.Title(i).String = snTot.iMov.pInfo.gName{i};         
     end
 end
 
 % resets the y-label string (if using mid-line crossings)
-if (isempty(pF.yLabel.String))
-    if (strcmp(movType,'Midline Crossing'))
+if isempty(pF.yLabel.String)
+    if strcmp(movType,'Midline Crossing')
         pF.yLabel.String = sprintf('Beam Crosses (count min^{-1})');
     else
         pF.yLabel.String = sprintf('Speed (mm sec^{-1})');
@@ -278,10 +294,10 @@ if (isempty(pF.yLabel.String))
 end
     
 % sets the time axis properties
-if (isempty(pF.xLabel.String))
-    if (absTime)
+if isempty(pF.xLabel.String)
+    if absTime
         % case is using the absolute time axis
-        if (pP.isZeitG)            
+        if pP.isZeitG
             % case is using Zeitgeiber time
             pF.xLabel.String = 'Zeitgeiber Time';
         else
@@ -304,11 +320,11 @@ end
 pData.pF = pF;
 
 % retrieves the formatting struct
-if (isempty(m)); szMx = 1; else; szMx = max([m n]); end
+if isempty(m); szMx = 1; else; szMx = max([m n]); end
 pF = retFormatStruct(pData.pF,szMx);
 
 % retrieves the panel object handle
-hP = get(gca,'Parent');
+hP = getCurrentAxesProp('Parent');
 
 % ----------------------- %
 % --- FIGURE CREATION --- %
@@ -316,13 +332,13 @@ hP = get(gca,'Parent');
 
 % memory allocation
 hPlot = cell(nApp,1);
-if (pP.pltErr)
+if pP.pltErr
     % calculates the overall limit (mean + SEM)
     yLim = detOverallLimit(cellfun(@(x)(max(cell2mat(...
         field2cell(x,'V_mn'))+cell2mat(field2cell(x,'V_sem')))),plotD));
     
     % if not SEM, then calculate maximum from the mean
-    if (isnan(yLim))
+    if isnan(yLim)
         yLim = max(cellfun(@(x)(detOverallLimit(field2cell(x,'V_mn'))),plotD));    
     end
 else
@@ -332,21 +348,22 @@ end
 
 % sets the stimulus markers
 if pP.showStim
-    Ts = cell2mat(snTot.Ts);
+    Ts = getMotorFiringTimes(snTot.stimP);
+%     Ts = cell2mat(snTot.Ts);
     [Tstim,Ystim] = deal(repmat(Ts,1,2)',repmat([0 yLim],length(Ts),1)');
 end
     
 % plots the day/night bands (if required)
 yOfs = 0;
-if (pP.pltDN)  
-    if (sP.Sub.isComb)
+if pP.pltDN
+    if sP.Sub.isComb
         hAx = {plotDayNightGraph(hP,snTot,p(1).Tf*tMlt,ceil(yLim+yOfs),1,[m,n],tMlt)};
     else
         hAx = plotDayNightGraph(hP,snTot,p(1).Tf*tMlt,ceil(yLim+yOfs),ind,[m,n],tMlt);
         if ((m*n) == 1); hAx = {hAx}; end
     end
 else
-    if (sP.Sub.isComb)
+    if sP.Sub.isComb
         hAx = {createSubPlotAxes(hP)};
     else
         hAx = cellfun(@(x)(createSubPlotAxes(hP,[m,n],x)),num2cell(1:nApp),'un',0);
@@ -362,7 +379,7 @@ for j = 1:nApp
     i = ind(j);
         
     % sets the subplot to be plotted on and updates the properties
-    if (sP.Sub.isComb)
+    if sP.Sub.isComb
         % case is combining, so use the main axis
         [colNw,k] = deal(col{j},1);
         if (j == 1); axis(hAx{k},'on'); end
@@ -376,7 +393,7 @@ for j = 1:nApp
     set(hAx{k},'linewidth',1.5,'box','on','UserData',j)
 
     % plots the SEM error signal (if required)
-    if (pP.pltErr)  
+    if pP.pltErr 
         set(gcf,'CurrentAxes',hAx{k})
         plotSignalSEM(p(j).V_mn+yOfs,p(j).V_sem,p(j).Tf*tMlt,colNw,0.5)     
     end
@@ -384,16 +401,17 @@ for j = 1:nApp
     % plots the traces (time scaled to hours)  
     hPlotNw = plotFullSignal(hAx{k},p(j).Tf*tMlt,p(j).V_mn+yOfs);
     set(hPlotNw,'color',colNw,'linewidth',pP.lWid);    
-    if (sP.Sub.isComb); hPlot{j} = hPlotNw; end          
+    if sP.Sub.isComb; hPlot{j} = hPlotNw; end          
         
     % plots the stimulus markers
-    if ((i == 1) || (~sP.Sub.isComb))
+    if (i == 1) || (~sP.Sub.isComb)
         if pP.showStim && exist('Tstim','var')
-            plot(hAx{k},Tstim*tMlt,Ystim+yOfs,'k:','linewidth',pP.lWid,'tag','hStim'); 
+            plot(hAx{k},Tstim*tMlt,Ystim+yOfs,...
+                        'k:','linewidth',pP.lWid,'tag','hStim'); 
         end    
 
         % sets the time axis properties
-        if (pP.isZeitG)            
+        if pP.isZeitG    
             % case is using Zeitgeiber time
             setZeitGTimeAxis(hAx{k},p(j).Tf,snTot);        
         else
@@ -402,10 +420,11 @@ for j = 1:nApp
         end
 
         % sets the x/y axis limits
-        if (range(sP.xLim) == 0)
+        if range(sP.xLim) == 0
             set(hAx{k},'ylim',[0 yLim]+yOfs,'box','off')            
         else
-            set(hAx{k},'xlim',sP.xLim*tMlt,'ylim',[0 yLim]+yOfs,'box','off')            
+            ylimT = [0 yLim]+yOfs;
+            set(hAx{k},'xlim',sP.xLim*tMlt,'ylim',ylimT,'box','off')            
         end     
 
         % formats the plot axis
@@ -436,7 +455,7 @@ end
 yLimMx = cellfun(@(x)(setStandardYAxis(x,[],5,yLimMx,0)),hAx);
 for i = 1:length(hAx)    
     % resets the stimuli markers
-    if (pP.showStim)
+    if pP.showStim
         set(findall(hAx{i},'tag','hStim'),'yData',[0 yLimMx(1)]);
     end
     
