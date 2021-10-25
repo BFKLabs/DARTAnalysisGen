@@ -315,7 +315,7 @@ p = plotD{1}(ind);
 % ------------------------------------- %
     
 % sets the axis handle
-hAx = getCurrentAxesProp;
+[hAx,hFig] = getCurrentAxesProp;
 
 % sets the y-axis step size (based on the number of bins)
 rBin = size(p(1).Y,2);
@@ -476,16 +476,23 @@ resetObjPos(hAx,'bottom',2*H,1)
 pause(0.1);
 
 % creates the second axis for the day/night plot
-hAx2 = axes('parent',get(hAx,'parent'),'position',axPos2,...
+set(0,'CurrentFigure',hFig);  
+hAx2 = axes('parent',get(hAx,'parent'),'Units','Normalized',...
             'ytick',[],'yticklabel',[],'xcolor','k','xticklabel',[],...
             'ycolor','k','linewidth',1.5,'zcolor','w','xtick',[],...
-            'visible','off','Units','Normalized');
+            'visible','off','position',axPos2);
+set(hFig,'CurrentAxes',hAx2);
+pause(0.05);
 
 % adds in the day/night fill objects (first trace only)
 hold(hAx2,'on'); axis(hAx2,'on')
 hFD = fill(xFillD(ix),yFill(iy),0.9*[1 1 0],'tag','hDN');
-hFN = fill(xFillN(ix),yFill(iy),0.5*[1 1 1],'tag','hDN');        
-set(hFD,'parent',hAx2); set(hFN,'parent',hAx2)
+hFN = fill(xFillN(ix),yFill(iy),0.5*[1 1 1],'tag','hDN');  
+
+set(hFD,'parent',hAx2); 
+set(hFN,'parent',hAx2)
+
+% sets the axis limits
 set(hAx2,'xlim',[0 24],'ylim',yLim);
 set(hAx,'xlim',convertTime([0 24],'hours','min'))
 

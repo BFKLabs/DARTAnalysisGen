@@ -254,7 +254,7 @@ pF = retFormatStruct(pF,nApp);
 % ------------------------------------- %
     
 % retrieves the panel object handle
-hAx = getCurrentAxesProp();
+[hAx,hFig] = getCurrentAxesProp();
 
 % sets the y-axis step size (based on the number of bins)
 rBin = max(cellfun(@(x)(size(x,2)),field2cell(p,'Y')));
@@ -409,14 +409,15 @@ resetObjPos(hAx,'bottom',2*H,1)
 pause(0.1);
 
 % creates the second axis for the day/night plot
+set(0,'CurrentFigure',hFig);  
 hAx2 = axes('parent',get(hAx,'parent'),'position',axPos2,...
             'ytick',[],'yticklabel',[],'xcolor','k','xticklabel',[],...
             'ycolor','k','linewidth',1.5,'zcolor','w','xtick',[],...
-            'Units','Normalized');
+            'Units','Normalized','tag','hAxDN');
         
 % plots the day/night graph onto the axis
 set(hAx2,'xlim',[1 length(p(1).T)],'ylim',[0 1]+0.5)
-plotDayNightAxes(snTot,p(1).T*Tmlt,1,1,hAx2)
+plotDayNightAxes(hAx,snTot,p(1).T*Tmlt,1,1)
 
 % case is using the absolute time axis
 if (pP.isZeitG)            
