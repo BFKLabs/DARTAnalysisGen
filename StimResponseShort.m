@@ -579,8 +579,9 @@ if (pP.incMet)
     % creates the sub-plot axes
     hAxIns = cell(nSub,1);
     for i = 1:nSub    
-        hAxIns{i} = axes('parent',hP,'OuterPosition',calcOuterPos(2,nSub,i+nSub),...
-                         'Units','Normalized','linewidth',1.5,'UserData',i);
+        outerPos = calcOuterPos(2,nSub,i+nSub);
+        hAxIns{i} = axes('parent',hP,'Units','Normalized','linewidth',...
+                        1.5,'UserData',i,'OuterPosition',outerPos);
     end
 end
 
