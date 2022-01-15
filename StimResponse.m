@@ -97,6 +97,9 @@ if (multiDay)
     cP(11).TTstr = 'Flag indicating whether the response is to be separated by daily activity';        
 end
 
+% adds the unique motor parameters
+cP = addUniqueMotorPara(cP,snTot);
+
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)
 
@@ -245,7 +248,8 @@ cP.movType = 'Absolute Speed';
 
 % fixed parameters
 nGrp = str2double(cP.nGrp);
-[tBefore,tAfter,iDay] = deal(cP.tBefore*60,cP.tAfter*60,[]);
+[devType,chType] = deal([]);
+[tBefore,tAfter,iDay,grpDay] = deal(cP.tBefore*60,cP.tAfter*60,[],false);
 
 % setting up of the stimuli signal time vector
 T = setStimTimeVector(cP);
@@ -253,17 +257,13 @@ T = setStimTimeVector(cP);
 % sets the daily time group strings
 Tgrp = setTimeGroupStrings(nGrp,cP.Tgrp0);
 
-% retrieves the daily grouping parameter value
-if (isfield(cP,'grpDay'))
-    % parameter exists
-    grpDay = cP.grpDay;
-else
-    % parameter does not exist (use false value)
-    grpDay = false;
-end
+% retrieves the other calculation parameters (if they exist)
+if isfield(cP,'grpDay'); grpDay = cP.grpDay; end
+if isfield(cP,'devType'); devType = cP.devType; end
+if isfield(cP,'chType'); chType = cP.chType; end
 
 % sets the day index strings (if grouping by day)
-if (grpDay)
+if grpDay
     nDayMx = max(detExptDayDuration(snTot));
     iDay = cellfun(@(x)(sprintf('Day #%i',x)),num2cell(1:nDayMx),'un',0);
 end
@@ -325,7 +325,7 @@ for i = 1:nExp
     
     % sets the video/stimuli time stamps into a single vector
     [flyok,Ttot] = deal(snTot(i).iMov.flyok,cell2mat(snTot(i).T));
-    [Ts0,~] = getMotorFiringTimes(snTot(i).stimP);
+    [Ts0,~] = getMotorFiringTimes(snTot(i).stimP,devType,chType);
 %     Ts = snTot(i).Ts(~cellfun(@isempty,snTot(i).Ts));    
     if ~isempty(Ts0)
         % determines the indices of the stimuli events within the total

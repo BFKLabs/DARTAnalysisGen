@@ -67,6 +67,9 @@ cP(2) = setParaFields(a{1},'Boolean',1,'sepDN','Separate Results By Day/Night');
 % sets the tool-tip strings
 cP(1).TTstr = 'Duration of the immobility time discretisation bins';
 
+% adds the unique motor parameters
+cP = addUniqueMotorPara(cP,snTot);
+
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)
 
@@ -162,6 +165,10 @@ else
     dnStr = [];
 end
 
+% retrieves the other calculation parameters (if they exist)
+if isfield(cP,'devType'); devType = cP.devType; end
+if isfield(cP,'chType'); chType = cP.chType; end
+
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,...
                                  'Tbin',Tbin','Tgrp',Tgrp,'dnStr',dnStr,...
@@ -186,7 +193,7 @@ h = ProgBar(wStr,'Sleep Intensity Calculations');
 
 % loops through each of the experiments calculating the sleep intensity
 % data values
-for i = 1:nExp    
+for i = 1:nExp
     % updates the waitbar figure (if more than one solution file)
     if wOfs > 0    
         wStrNw = sprintf('%s (Experiment %i of %i)',wStr{1},i,nExp);

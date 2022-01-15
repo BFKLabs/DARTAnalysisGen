@@ -68,6 +68,9 @@ cP(1) = setParaFields(a{1},'List',{1+6*isLong,pList},...
 % sets the tool-tip strings
 cP(1).TTstr = 'The number of groups that the day is split up into';
 
+% adds the unique motor parameters
+cP = addUniqueMotorPara(cP,snTot);
+
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)
 
@@ -179,8 +182,9 @@ cP.movType = 'Absolute Speed';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 nGrp = str2double(cP.nGrp);
+[devType,chType] = deal([]);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 
 % fixed parameters
 a = NaN(nGrp,1);
@@ -193,7 +197,7 @@ iStim = arrayfun(@(x)(sprintf('Stim #%i',x)),(1:24/length(Tgrp))','un',0);
 % sets the y-axis level strings
 Nlvl = length(snTot(1).iExpt.Stim(1).sigPara{1})+2;
 yStr = [{'MF'};cellfun(@(x)(sprintf('%.1f',x)),num2cell(...
-                linspace(0,1,Nlvl-2))','un',0);{'NR'}];                                  
+                linspace(0,1,Nlvl-2))','un',0);{'NR'}];                      
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,...

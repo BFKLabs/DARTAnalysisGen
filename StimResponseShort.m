@@ -94,6 +94,9 @@ if (canGrpStim)
     cP(10).TTstr = 'Flag indicating whether the response is to be grouped by stimuli events';    
 end
 
+% adds the unique motor parameters
+cP = addUniqueMotorPara(cP,snTot);
+
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)
 
@@ -254,6 +257,11 @@ else
     [nStim,iStim,iStimS] = deal(1,[],[]);
 end
 
+% retrieves the other calculation parameters (if they exist)
+[dT,chT] = deal([]);
+if isfield(cP,'devType'); dT = cP.devType; end
+if isfield(cP,'chType'); chT = cP.chType; end
+
 % memory allocation
 aok = cell2mat(cellfun(@(x)(field2cell(...
                     field2cell(x,'iMov',1),'ok')),num2cell(snTot))');
@@ -276,7 +284,7 @@ cP.nGrp = num2str(nStim);
 
 % retrieves the stimuli start/finish times
 [stimP,sTrain] = field2cell(snTot,{'stimP','sTrainEx'});
-Ts = cellfun(@(x)(getMotorFiringTimes(x)),stimP,'un',0);
+Ts = cellfun(@(x)(getMotorFiringTimes(x,dT,chT)),stimP,'un',0);
 % [Ts,Tf] = getStimTimes(stimP,sTrain,'Motor');
 % [Ts,Tf] = deal(Ts{1},Tf{1});
 

@@ -65,6 +65,9 @@ cP(1) = setParaFields(a{1},'Number',60,...
 % sets the tool-tip strings
 cP(1).TTstr = 'Duration over which the population speed is averaged';
 
+% adds the unique motor parameters
+cP = addUniqueMotorPara(cP,snTot);
+
 % --- initialises the plotting parameter function --- %
 function pP = initPlotPara(snTot)
 
@@ -243,6 +246,11 @@ pF = pData.pF;
 % sets any missing fields
 if ~isfield(pP,'showStim'); pP.showStim = false; end
 
+% retrieves the other calculation parameters (if they exist)
+[devType,chType] = deal([]);
+if isfield(cP,'devType'); devType = cP.devType; end
+if isfield(cP,'chType'); chType = cP.chType; end
+
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %
@@ -348,8 +356,8 @@ end
 
 % sets the stimulus markers
 if pP.showStim
-    Ts = getMotorFiringTimes(snTot.stimP);
-%     Ts = cell2mat(snTot.Ts);
+    Ts = getMotorFiringTimes(snTot.stimP,devType,chType);
+    if iscell(Ts); Ts = Ts{1}; end
     [Tstim,Ystim] = deal(repmat(Ts,1,2)',repmat([0 yLim],length(Ts),1)');
 end
     

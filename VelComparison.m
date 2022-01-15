@@ -72,6 +72,9 @@ cP(1).TTstr = 'The number of groups that the day is split up into';
 cP(2).TTstr = 'Time period before stimuli used to calculate average speed';
 cP(3).TTstr = 'Time period after stimuli used to calculate average speed';
 
+% adds the unique motor parameters
+cP = addUniqueMotorPara(cP,snTot);
+
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)
 
@@ -160,14 +163,19 @@ cP.movType = 'Absolute Distance';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 nGrp = str2double(cP.nGrp);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % fixed parameters
 [tBefore,tAfter] = deal(cP.tBefore,cP.tAfter);
 
 % sets the daily time group strings
-Tgrp = setTimeGroupStrings(nGrp,cP.Tgrp0,cP.useZG);  
+Tgrp = setTimeGroupStrings(nGrp,cP.Tgrp0,cP.useZG); 
+
+% retrieves the other calculation parameters (if they exist)
+[devType,chType] = deal([]);
+if isfield(cP,'devType'); devType = cP.devType; end
+if isfield(cP,'chType'); chType = cP.chType; end
 
 % memory allocation
 plotD = initPlotValueStruct(snTot,pData,cP,NaN(1,nGrp),'Tgrp',Tgrp,...
@@ -210,7 +218,7 @@ for i = 1:nExp
     % sets the video/stimuli time stamps into a single vector
     flyok = snTot(i).iMov.flyok;
     Ttot = cell2mat(snTot(i).T);
-    Ts = getMotorFiringTimes(snTot(i).stimP);
+    Ts = getMotorFiringTimes(snTot(i).stimP,devType,chType);
     if ~isempty(Ts)
         % determines the indices of the stimuli events within the total
         % experiment, and determines what time groups that the stimuli

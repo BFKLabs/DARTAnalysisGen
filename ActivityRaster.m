@@ -66,6 +66,9 @@ cP(2).TTstr = 'Determines whether or not to use the entire experiment for the an
 cP(3).TTstr = 'The time into the experiment where the analysis begins';
 cP(4).TTstr = 'The duration period of the analysis';
 
+% adds the unique motor parameters
+cP = addUniqueMotorPara(cP,snTot);
+
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)
 
@@ -151,6 +154,11 @@ cP.movType = 'Absolute Speed';
 
 % array dimensions
 nExp = length(snTot);
+[devType,chType] = deal([]);
+
+% retrieves the other calculation parameters (if they exist)
+if isfield(cP,'devType'); devType = cP.devType; end
+if isfield(cP,'chType'); chType = cP.chType; end
 
 % memory allocation
 nApp = length(snTot(1).iMov.ok);

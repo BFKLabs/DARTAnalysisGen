@@ -86,6 +86,9 @@ cP(8).TTstr = 'Duration for which a fly is considered to be non-reactive';
 cP(9).TTstr = 'Ignore signals that are too weak to be analysed';
 cP(10).TTstr = 'Peak/Signal length ratio beneath which the signal is considered too weak';
 
+% adds the unique motor parameters
+cP = addUniqueMotorPara(cP,snTot);
+
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)
 
@@ -244,8 +247,8 @@ end
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 tBin = str2double(cP.nBin);
+[nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % memory allocation
 [nGrp,tBefore] = deal(60/tBin,cP.tBefore*60);
@@ -254,8 +257,13 @@ tBin = str2double(cP.nBin);
 % setting up of the stimuli signal time vector
 T = setStimTimeVector(cP);
 
+% retrieves the other calculation parameters (if they exist)
+[dT,chT] = deal([]);
+if isfield(cP,'devType'); dT = cP.devType; end
+if isfield(cP,'chType'); chT = cP.chType; end
+
 % ensures to include time bins of adequate length
-Ts0 = arrayfun(@(x)(getMotorFiringTimes(x.stimP)),snTot,'un',0);
+Ts0 = arrayfun(@(x)(getMotorFiringTimes(x.stimP,dT,chT)),snTot,'un',0);
 dTs = cellfun(@(x)(min(diff(x))),Ts0);
 Tbin = Tbin(Tbin <= max(convertTime(dTs,'sec','min')));
 
@@ -421,7 +429,7 @@ for i = 1:nApp
 end
    
 % closes the waitbar figure
-if h.Update(1,'Inactivity Calculations Complete!',1)
+if ~h.Update(1,'Inactivity Calculations Complete!',1)
     h.closeProgBar()
 end
 
