@@ -302,7 +302,7 @@ else
 end
 
 % resets the y-label string (if using mid-line crossings)
-if (isempty(pF.yLabel.String))
+if isempty(pF.yLabel.String)
     if (strcmp(movType,'Midline Crossing'))
         pF.yLabel.String = sprintf('Beam Crosses (count min^{-1})');
     else

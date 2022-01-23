@@ -159,7 +159,8 @@ plotD = initPlotValueStruct(snTot,pData,cP,...
                               'B',[],'B_mn',[],'B_sem',[],...
                               'M',[],'M_mn',[],'M_sem',[]);
 
-% other memory allocations                             
+% other memory allocations
+indT = cell(nExp,1);
 [I,TT] = deal(cell(nApp,nExp),cell(1,nExp));
 
 % creates the waitbar figure
@@ -187,13 +188,15 @@ for i = 1:nExp
     end
 
     % calculates the video frame rate and experiment apparatus indices
-    FPS = 1/mean(diff(T{i}));
+    FPS = 1/nanmean(diff(T{i}));    
     iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
     
-    % uses all the time points
-    ii = 1:length(T{i});
+    % determines the points where there is a large time gap
+    Tp = snTot(i).iExpt.Timing.Tp*3;
+    indT{i} = find(diff(T{i}) > Tp);
     
     % sets the relevant time points and apparatus indices for this expt
+    ii = 1:length(T{i});
     isMove = calcFlyMove(snTot(i),T{i},ii,iApp,cP.vAct);      
     
     % calculates the time mid point of each frame, and removes all the
@@ -221,10 +224,10 @@ for i = 1:nApp
     IBIR = cell(nExp,nFly(i));
     
     % sets all of the experiments into a single array
-    for j = 1:nExp                      
+    for j = 1:nExp
         if ~isempty(I{i,j})
             % sets the column indices and increments the offset       
-            I{i,j}(1,:) = false;
+            I{i,j}(1,:) = false;            
             
             % groups the frames where the fly has moved. from this,
             % calculate the duration of these movement events.
@@ -235,13 +238,25 @@ for i = 1:nApp
                         
             % removes the first group (remove stationary flies and the
             % first frame which is counted as being an inactive frame)
-            stopGrp = cellfun(@(x)(x(2:end)),stopGrp,'un',0);            
-
+            stopGrp = cellfun(@(x)(x(2:end)),stopGrp,'un',0);             
+            if ~isempty(indT{j})
+                for k = 1:length(stopGrp)
+                    % determines the stop time groups that encompass the
+                    % large time gaps and removes them                    
+                    indX = cell2mat(arrayfun(@(x)(find(cellfun(@(y)...
+                             (any(y==x)),stopGrp{k}))),indT{j},'un',0));
+                    if ~isempty(indX)
+                        B = ~setGroup(indX,size(stopGrp{k}));
+                        stopGrp{k} = stopGrp{k}(B);
+                    end
+                end
+            end            
+            
             % calculates the duration of the movement/stopped events
             tGrpMove = cellfun(@(x)(cellfun(@(y)(TT{j}(y(end)) - ...
                             TT{j}(y(1)-1)),x)),moveGrp,'un',0);
             tGrpStop = cellfun(@(x)(cellfun(@(y)(TT{j}(y(end)) - ...
-                            TT{j}(y(1)-1)),x)),stopGrp,'un',0);
+                            TT{j}(y(1)-1)),x)),stopGrp,'un',0);                     
                         
             % determine which groups had a movement duration greater than
             % the time, tMove. these events are considered to be start

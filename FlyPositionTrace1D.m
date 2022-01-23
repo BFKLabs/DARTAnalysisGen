@@ -58,7 +58,7 @@ cP = setParaFields(nPara);
 a = {'1 - General'};
 
 % sets the plot parameter fields into the data struct
-cP(1) = setParaFields(a{1},'Number',50,'sRate','Signal Downsample Rate',[10 1000 false]);
+cP(1) = setParaFields(a{1},'Number',50,'sRate','Signal Downsample Rate',[10 1000 1]);
 
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)

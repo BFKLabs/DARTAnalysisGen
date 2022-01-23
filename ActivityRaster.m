@@ -264,6 +264,9 @@ h = ProgressLoadbar('Creating Activty Rasterplot...');
 nApp = length(ind); if (nApp == 0); return; end
 p = plotD{1}(ind);
 
+% retrieves the panel object handle
+hP = getCurrentAxesProp('Parent');
+
 % retrieves the stimuli time stamps
 if isfield(snTot,'Ts')
     Ts = cellfun(@(x)(cell2mat(x)/60),field2cell(snTot,'Ts'),'un',0);
@@ -329,7 +332,7 @@ hAx = cell(1,nApp);
 % loops through all the subplots 
 for j = 1:nApp
     % sets the actual plot index and creates the subplot region
-    [hAx{j},k] = deal(subplot(m,n,j),ind(j));  
+    [hAx{j},k] = deal(subplot(m,n,j,'Parent',hP),ind(j));  
     [pF.xLabel.ind,pF.yLabel.ind] = deal(NaN); 
     
     % sets up the plot region

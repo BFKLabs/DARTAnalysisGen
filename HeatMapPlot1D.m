@@ -459,7 +459,7 @@ pData.oP.yVar(1).Type(:) = false;
 function [BHistT,BHistP] = calcPosHist(snTot,cP,indB,iApp)
 
 % parameters
-[pDel,xiH] = deal(0.001,1:cP.rBin);
+[pDel,xiH] = deal(0.001,0.5:(cP.rBin+0.5));
 flyok = snTot.iMov.flyok{iApp};
 ifok = find(flyok);
 
@@ -478,10 +478,11 @@ HH = NaN(length(indB),cP.rBin);
 
 % calculates the histograms for each time bin over all flies
 for i = 1:length(indB)  
-    if (isempty(indB{i}))
-        H{i} = NaN(length(ifok),length(xiH));
+    if isempty(indB{i})
+        H{i} = NaN(length(ifok),cP.rBin);
     else    
-        H{i} = hist(PxN(indB{i},:),xiH)'; 
+        PxNC = num2cell(PxN(indB{i},:),1);
+        H{i} = cell2mat(cellfun(@(x)(histcounts(x,xiH)'),PxNC,'un',0))'; 
     end
 end
 

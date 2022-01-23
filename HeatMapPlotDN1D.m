@@ -530,7 +530,7 @@ function [BHistT,BHistP] = calcDNPosHist(snTot,nDay,cP,indB,ii,iApp)
 
 % parameters
 [nBin,nGrp] = deal(convertTime(1,'day','sec')/cP.tBin, length(indB));
-[pDel,xiH,flyok] = deal(0.001,1:cP.rBin,snTot.iMov.flyok{iApp});
+[pDel,xiH,flyok] = deal(0.001,0.5:(cP.rBin+0.5),snTot.iMov.flyok{iApp});
 ifok = find(flyok);
 
 %
@@ -589,12 +589,11 @@ clear Px;
 
 % calculates the histograms for each time bin over all flies
 for i = 1:nGrp
-    if (i > length(indB))
-        H{i} = NaN(length(ifok),length(xiH));
-    elseif (isempty(indB{i}))
-        H{i} = NaN(length(ifok),length(xiH));
+    if (i > length(indB)) || isempty(indB{i})
+        H{i} = NaN(length(ifok),cP.rBin);
     else
-        H{i} = hist(PxN(indB{i},:),xiH)'; 
+        PxNC = num2cell(PxN(indB{i},:),1);
+        H{i} = cell2mat(cellfun(@(x)(histcounts(x,xiH)'),PxNC,'un',0))';         
     end
 end
 

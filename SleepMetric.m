@@ -218,7 +218,7 @@ for i = 1:nExp
     indB(cellfun(@length,indB) < cP.tBin/2) = {[]};        
     
     % calculates the sleep metrics
-    for j = 1:nApp       
+    for j = 1:nApp
         % updates the waitbar figure
         wStrNw = sprintf(['Calculating Sleep Metrics (Region ',...
                           '%i of %i)'],j,nApp);

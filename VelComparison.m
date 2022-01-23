@@ -291,7 +291,7 @@ cP = retParaStruct(pData.cP);
 pF = pData.pF;
 
 % if the current data set is empty, then exit the loop
-if (all(isnan(plotD{1}(sP.pInd).V1_mn))); return; end
+if all(isnan(plotD{1}(sP.pInd).V1_mn)); return; end
 
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
@@ -299,16 +299,27 @@ if (all(isnan(plotD{1}(sP.pInd).V1_mn))); return; end
 
 % sets the indices to be plotted
 iPlotT = find(sP.pT);
-if (isempty(iPlotT)); return; end
+if isempty(iPlotT); return; end
 
 % sets the parameters from the data structs
 p = plotD{1}(sP.pInd);
-
-% sets the time group value and the x-plot values
 nGrp = str2double(cP.nGrp);
-xi = 1:nGrp;
+
+% determines if the group count field and calculated values match
+if length(p.Tgrp) ~= nGrp
+    % if not then output an error message to screen
+    mStr = sprintf(['Error! The calculated and selected daily ',...
+                    'time groups do not match. You will need to ',...
+                    're-run the function calculations.']); 
+    
+    
+    % exits the function
+    waitfor(msgbox(mStr,'Invalid Parameter Selection','modal'))
+    return
+end
 
 % other parameters
+xi = 1:nGrp;
 isBar = strcmp(pP.pType,'Bar Graph');
 [c,mm,lWid,nTick,pWL] = deal('rk','+o*xsd^v><ph',2,6,0.85);
 
@@ -328,16 +339,13 @@ pF.Title(1).String = pF.Axis(1).String{sP.pInd};
 a = (~cellfun(@isempty,p.V1) & ~cellfun(@isempty,p.V2));
 
 % sets the polar plot labels
-if (pP.plotPolar)
+if pP.plotPolar
     pP.addTrend = false;
     pF.yLabel(1).String = 'Distance (mm s^{-1})';
     pF.xLabel(1).String = 'Phase Angle (deg)';
 end
 
-% ----------------------- %
-% --- FIGURE CREATION --- %
-% ----------------------- %
-
+% ------------------------------ %
 % --- AVERAGE SPEED VS GROUP --- %
 % ------------------------------ %
 
@@ -350,10 +358,10 @@ set(hAx,'Units','Normalized','box','on')
 [hPlot,xTick] = plotDoubleBarBoxMetrics(hAx,p,{'V1','V2'},pP);      
 
 % creates the subplot legend
-if (pP.grpTime)
+if pP.grpTime
     % resets the legend/x-axis tick labels
     [pF.Legend.String,pF.Legend.lgHorz] = deal(lStr2,true);      
-    if (isBar)
+    if isBar
         % case is the graph is a bar graph
         [xLim,xi] = deal([1 nGrp],1:nGrp);
     else
@@ -367,7 +375,7 @@ if (pP.grpTime)
 else
     % resets the legend/x-axis tick labels
     pF.Legend.String = lStr1;  
-    if (isBar); xTick = [1 2]; end           
+    if isBar; xTick = [1 2]; end           
     
     % updates the graph properties
     set(hAx,'xTick',xTick,'xticklabel',lStr2)               
@@ -380,12 +388,12 @@ formatPlotAxis(hAx,pF,2);
 hLg = createLegendObj(hPlot,pF.Legend);
     
 % turns the grid on (if specified)
-if (pP.plotGrid); set(hAx,'ygrid','on'); end
+if pP.plotGrid; set(hAx,'ygrid','on'); end
 
 % sets the 
-if (pP.plotFixedY)
+if pP.plotFixedY
     % determines the maximum y-axis extent over all apparatus
-    if (isBar)
+    if isBar
         V1mx = max(cellfun(@(x,y)(detOverallLimit(x+y)),field2cell(...
                             plotD{1},'V1_mn'),field2cell(plotD{1},'V1_sem')));
         V2mx = max(cellfun(@(x,y)(detOverallLimit(x+y)),field2cell(...
@@ -429,8 +437,9 @@ else
 end
 
 % adds the x-axis labels 
-if (pP.grpTime); setGroupString(hAx,pF,xi,lStr1,-90); end
+if pP.grpTime; setGroupString(hAx,pF,xi,lStr1,-90); end
 
+% ----------------------------------------- %
 % --- AVERAGE SPEED VS PRE/POST STIMULI --- %
 % ----------------------------------------- %
 
@@ -450,10 +459,10 @@ set(hAx2,'xtick',get(hAx,'xtick'),'xticklabel',[],...
 formatPlotAxis(hAx2,pF,3); 
 
 % turns the grid on (if specified)
-if (pP.plotGrid); set(hAx2,'ygrid','on'); end
+if pP.plotGrid; set(hAx2,'ygrid','on'); end
 
 % sets the 
-if (pP.plotFixedY)
+if pP.plotFixedY
     % determines the maximum y-axis extent over all apparatus
     if (isBar)
         Mmx = max(cellfun(@(x,y)(detOverallLimit(x+y)),field2cell(...
@@ -494,6 +503,10 @@ else
     setGroupString(hAx2,pF,1:nGrp,lStr1,-90); 
 end
 
+% pause for update...
+pause(0.05);
+
+% -------------------------------------- %
 % --- PRE/POST STIMULI SPEED MARKERS --- %
 % -------------------------------------- %
 
@@ -501,7 +514,8 @@ end
 hPlot = zeros(nGrp,1);
 
 % creates a new subplot
-hAxM = subplot(2,2,3); hold on  
+hAxM = subplot(2,2,3,'Parent',hP); 
+hold(hAxM,'on');
 axis(hAxM,'off');
 
 %
@@ -618,6 +632,8 @@ if (nGrp > 1)
 end
 
 axis(hAxM,'on');
+setObjVisibility(hAx,'on')
+a = 1;
 
 % ----------------------------------------------------------------------- %
 % ---                         OUTPUT FUNCTION                         --- %
