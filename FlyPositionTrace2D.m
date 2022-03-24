@@ -157,7 +157,7 @@ for i = 1:nExp
     end    
     
     % sets the relevant time points and apparatus indices for this expt
-    if (cP.useAll)
+    if cP.useAll
         % uses all the time points
         ii = 1:length(T{i});
     else

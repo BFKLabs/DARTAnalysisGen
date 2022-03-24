@@ -220,6 +220,9 @@ for i = 1:nExp
     Ttot = cell2mat(snTot(i).T);
     Ts = getMotorFiringTimes(snTot(i).stimP,devType,chType);
     if ~isempty(Ts)
+        % removes any stimuli that are less than the pre-stimuli phase
+        Ts = Ts(Ts > cP.tBefore);
+        
         % determines the indices of the stimuli events within the total
         % experiment, and determines what time groups that the stimuli
         % events took place in         
