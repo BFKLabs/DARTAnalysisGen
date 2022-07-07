@@ -188,22 +188,27 @@ for i = 1:nApp
         N = sum(snTot.iMov.flyok{i});
         
         % sets the plot values (reverses the order for the 2D values)
-        x = nansum(cell2mat(reshape(HistN{i},[1 1 numel(HistN{i})])),3);
+        x = sum(cell2mat(reshape...
+                        (HistN{i},[1,1,numel(HistN{i})])),3,'omitnan');
         plotD(i).Y = x./repmat(sum(x,2),1,size(x,2));        
         
         % calculates the moving mean based on the function type
-        Ex = nansum(Qw.*plotD(i).Y,2);               
-        switch (cP.cFunc)
-            case ('Mean Location') % case is the mean
+        Ex = sum(Qw.*plotD(i).Y,2,'omitnan');               
+        switch cP.cFunc
+            case ('Mean Location') 
+                % case is the mean location
                 plotD(i).Y_mn = Ex; 
-            case ('Median Location') % case is the median
+                
+            case ('Median Location') 
+                % case is the median location
                 A = num2cell(cellfun(@(x,y)(x*ones(1,y)),num2cell(Qw),...
                                 num2cell(x),'un',0),2);
-                plotD(i).Y_mn = cellfun(@(x)(nanmedian(cell2mat(x))),A);
+                plotD(i).Y_mn = cellfun(@(x)...
+                                (median(cell2mat(x,'omitnan'))),A);
         end       
 
         % calculates the expected location standard error
-        Ex2 = nansum((Qw.^2).*plotD(i).Y,2);
+        Ex2 = sum((Qw.^2).*plotD(i).Y,2,'omitnan');
         plotD(i).Y_sem = sqrt(Ex2-Ex.^2)./sqrt(N);        
     end
 end

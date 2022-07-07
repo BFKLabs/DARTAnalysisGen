@@ -242,7 +242,7 @@ for i = 1:nApp
     [plotD(i).Pr_N, noCount] = deal(nnN, nnN == 0);
         
     % calculates the mean/sem reaction proportion
-    [plotD(i).Pr_P,PR] = deal(nanmean(Y,3));
+    [plotD(i).Pr_P,PR] = deal(mean(Y,3,'omitnan'));
     plotD(i).Pr_sem = sqrt((PR.*(1 - PR))./nnN);
     [plotD(i).Pr_P(noCount),plotD(i).Pr_sem(noCount)] = deal(0);
 end

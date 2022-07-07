@@ -45,7 +45,7 @@ rI.Scope = setFuncScopeString(pData.Type);
 rI.Dur = 'Short';
 rI.Shape = 'None';
 rI.Stim = 'None';
-rI.Spec = 'None';        
+rI.Spec = 'None';
         
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
@@ -143,12 +143,17 @@ end
 T = cellfun(@(x)(cell2mat(x)),field2cell(snTot,'T'),'un',0);
 Tf = cellfun(@(x)(x(end)),T)/60;
 
+% if the experiment duration is small, then use second instead
+if max(Tf) < 1
+    [Tf,Tmlt] = deal(Tf*60,1); 
+end
+
 % checks to see if the solution struct has the sub-region data struct
 ok = checkFuncPara({'AnalysisTimeCheck'},cP,Tf);
-if (~ok); plotD = []; return; end
+if ~ok; plotD = []; return; end
 
 % if using all the experiment for analysis, reset the calc parameters
-if (cP.useAll)
+if cP.useAll
     [cP.T0,cP.Tdur] = deal(0,floor(max(Tf)));
 end
     
@@ -198,12 +203,12 @@ for i = 1:nExp
     iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
     
     % sets the relevant time points and apparatus indices for this expt
-    if (cP.useAll)
+    if cP.useAll
         % uses all the time points
         ii = 1:length(T{i});
     else
         % use only the points from the start to the duration end
-        ii = (T{i} >= 60*cP.T0) & (T{i} <= 60*(cP.T0 + cP.Tdur));
+        ii = (T{i} >= Tmlt*cP.T0) & (T{i} <= Tmlt*(cP.T0 + cP.Tdur));
     end    
     
     % sets the relevant time points and apparatus indices for this expt
@@ -211,17 +216,27 @@ for i = 1:nExp
     isMove = calcFlyMove(snTot(i),Tnw,ii,iApp,cP.vAct);  
                     
     % calculates the time mid point of each frame, and from this determines
-    % the (minute) time group that each frames belong to
-    Tmid = (Tnw(1:end-1) + Tnw(2:end))/120; Tmid(diff(Tnw) > 2/FPS) = -1;
+    % the time group that each frames belong to
+    Tmid = (Tnw(1:end-1) + Tnw(2:end))/(2*Tmlt); 
+    Tmid(diff(Tnw) > (2/FPS)*(60/Tmlt)) = -1;
     TmidF = floor(Tmid) + 1; 
     tGrp = cellfun(@(x)(find(TmidF == x)),num2cell(1:cP.Tdur)','un',0);                       
                 
     % calculates the pre/post stimuli velocities for all flies, and
     % bins the values according to their time group bin
     for j = 1:length(iApp)  
-        fok = snTot(i).iMov.flyok{iApp(j)};
-        Z = cell2mat(cellfun(@(x)(sum(isMove{j}(x,:))/length(x)),tGrp,'un',0));
-        plotD(iApp(j)).Y(1,fok,i) = num2cell(Z,1);        
+        % calculates the speed values for the current group
+        Z = cell2mat(cellfun(@(x)...
+                            (sum(isMove{j}(x,:))/length(x)),tGrp,'un',0));
+
+        % sets the values into the storage array
+        if detMltTrkStatus(snTot(i).iMov)
+            xiY = 1:size(Z,2);
+            plotD(iApp(j)).Y(1,xiY,i) = num2cell(Z,1);
+        else
+            fok = snTot(i).iMov.flyok{iApp(j)};
+            plotD(iApp(j)).Y(1,fok,i) = num2cell(Z,1);
+        end
     end       
 end
 
@@ -257,16 +272,21 @@ pF = pData.pF;
 % ------------------------------------------- %
 
 % sets the plotting indices and subplot indices
-[ind,m,n] = deal(find(sP.Sub.isPlot),sP.Sub.nRow,sP.Sub.nCol);
+[ind,m,n,Tmlt] = deal(find(sP.Sub.isPlot),sP.Sub.nRow,sP.Sub.nCol,60);
 nApp = length(ind); if (nApp == 0); return; end
 p = plotD{1}(ind);
 
 % sets the stimuli time stamps
 T = cellfun(@(x)(cell2mat(x)),field2cell(snTot,'T'),'un',0);
-Tf = cellfun(@(x)(x(end)),T)/60;
+Tf = cellfun(@(x)(x(end)),T)/Tmlt;
+
+% if the experiment duration is small, then use second instead
+if max(Tf) < 1
+    [Tf,Tmlt] = deal(Tf*60,1); 
+end
 
 % converts the solution time arrays into single vectors
-if (cP.useAll)
+if cP.useAll
     [cP.T0,cP.Tdur] = deal(0,floor(max(Tf)));
 end
 
@@ -282,6 +302,7 @@ if (sP.Sub.isComb)% || (all([m n] == 1))
     % case is combining, so remove the titles
     pF.Legend.String = snTot(1).iMov.pInfo.gName;
     for i = 1:length(pF.Title); pF.Title(i).String = ''; end
+    
 elseif (all(cellfun(@isempty,field2cell(pF.Title,'String'))))
     % titles are empty, so reset them to the apparatus names
     for i = 1:length(pF.Title) 
@@ -301,8 +322,15 @@ elseif ~all([m n] == 1)
 end
 
 % sets the x/y labels
-[pF.xLabel.String,pF.yLabel.String] = deal('Time (min)','% Activity');
+[pF.xLabel.String,pF.yLabel.String] = deal('Time','% Activity');
 pF.Title = pF.Title(ind);
+
+% resets the x-label string
+if Tmlt == 1
+    pF.xLabel.String = sprintf('%s (sec)',pF.xLabel.String);
+else
+    pF.xLabel.String = sprintf('%s (min)',pF.xLabel.String);
+end
 
 % ----------------------- %
 % --- FIGURE CREATION --- %
@@ -370,14 +398,14 @@ for j = 1:nApp
     formatPlotAxis(hAxNw,pF,j);
     
     % adds in the gridlines (if checked)
-    if (pP.plotGrid); grid(hAxNw,'on'); end
+    if pP.plotGrid; grid(hAxNw,'on'); end
 end
 
 % --- PLOT AXES REFORMATTING --- %
 % ------------------------------ %
 
 % sets the non-aligned x/y labels
-if (~sP.Sub.isComb) && (~all([m n] == 1))
+if ~sP.Sub.isComb && (~all([m n] == 1))
     formatMultiXYLabels(hAx,pF,[m,n]);
 else
     axis(hAxNw,'on')

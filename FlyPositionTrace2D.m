@@ -70,7 +70,7 @@ pP = setParaFields(nPara);
 a = {'1 - General','2 - Trace Markers'};
 
 % sets the plot parameter fields into the data struct
-pP(1) = setParaFields(a{1},'Number',10,'nRow','Plot Row Count',[1 30 true]);
+pP(1) = setParaFields(a{1},'Number',10,'nRow','Plot Row Count',[1 100 true]);
 pP(2) = setParaFields(a{1},'Number',1,'lWid','Plot Line Width',[0.1 10 false]);
 pP(3) = setParaFields(a{1},'Boolean',1,'pltAvg','Plot Average Traces');
 pP(4) = setParaFields(a{1},'Boolean',0,'randPerm','Traces Selected Randomly',[],{3,1});
@@ -121,7 +121,7 @@ T = cellfun(@(x)(cell2mat(x)),field2cell(snTot,'T'),'un',0);
 % checks to see if the solution struct has the sub-region data struct
 snTotL = snTot(1);
 ok = checkFuncPara({'HasSubRegionStruct'},cP,snTotL);
-if (~ok); plotD = []; return; end
+if ~ok; plotD = []; return; end
 
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
@@ -283,13 +283,23 @@ for i = 1:nApp
     % plots the traces
     for j = 1:min(length(iPlt),pP.nRow)
         % sets the new plot values
-        [xOfs,yOfs] = deal(floor((j-1)/nRow),mod(j-1,nRow));
+        [xOfs,yOfs] = deal(mod(j-1,nCol),(nRow-1)-floor((j-1)/nCol));
         [xPltNw,yPltNw] = deal(X{i}(:,iPlt(j))+xOfs,Y{i}(:,iPlt(j))+yOfs);
         
-        % plots the traces and start/finish points (if required)
+        % plots the 2D traces 
         plot(xPltNw,yPltNw,'color',col{i},'linewidth',pP.lWid);
-        if (pP.showStart); plot(xPltNw(1),yPltNw(1),'ko','markersize',10,'linewidth',2); end
-        if (pP.showFinish); plot(xPltNw(end),yPltNw(end),'kx','markersize',10,'linewidth',2); end
+        
+        % plots that start marker (if required)
+        if pP.showStart
+            i0 = find(~isnan(xPltNw),1,'first');
+            plot(xPltNw(i0),yPltNw(i0),'ko','markersize',10,'linewidth',2); 
+        end
+        
+        % plots that finish marker (if required)        
+        if pP.showFinish
+            i1 = find(~isnan(xPltNw),1,'last');
+            plot(xPltNw(i1),yPltNw(i1),'kx','markersize',10,'linewidth',2)
+        end
     end
     
     % sets the x/y axis limits

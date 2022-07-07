@@ -336,7 +336,7 @@ for i = 1:nApp
                 
                 % sets the raw/mean IBI values for each fly in the current
                 % experiment (only if fly is within specific region)
-                IBI = cellfun(@(x,y)(nanmean(x(y))),tGrpStop,ii);
+                IBI = cellfun(@(x,y)(mean(x(y),'omitnan')),tGrpStop,ii);
                 for k2 = 1:length(ifok)
                     plotD(i).IBI{1,ifok(k2),j}(k) = IBI(k2);
                 end
@@ -350,7 +350,7 @@ for i = 1:nApp
             
                 % sets the mean MBL values for each fly in the current
                 % experiment (only if fly is within specific region)
-                MBL = cellfun(@(x,y)(nanmean(x(y))),tGrpMove,ii);
+                MBL = cellfun(@(x,y)(mean(x(y),'omitnan')),tGrpMove,ii);
                 for k2 = 1:length(ifok)
                     plotD(i).MBL{1,ifok(k2),j}(indMBL(k)) = MBL(k2);
                 end
@@ -474,7 +474,7 @@ switch (pP.pMet)
 end
 
 % creates the box-plot
-if (cP.useRegion)
+if cP.useRegion
     % case is for specific region metrics
     pP.pType = 'Boxplot';
     [hPlot,xi,Yplt] = plotMultiBarBoxMetrics(hAx,p,pStr,pP); 

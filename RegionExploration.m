@@ -174,7 +174,8 @@ for i = 1:nExp
         % calculates the new exploration values and appends to the array
 %         ifok = 1:length(snTot(i).iMov.flyok{iApp(j)});
         ifok = snTot(i).iMov.flyok{iApp(j)};
-        Enw = cellfun(@(x,y,z)(detFlyExploration(x,y,DL,z)),Px,Py,num2cell(R{j}(:)'));
+        Enw = cellfun(@(x,y,z)...
+                  (detFlyExploration(x,y,DL,z)),Px,Py,num2cell(R{j}(:)'));
         plotD(iApp(j)).E(1,ifok,i) = num2cell(Enw);       
     end
 end

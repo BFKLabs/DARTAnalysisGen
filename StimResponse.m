@@ -459,7 +459,8 @@ for i = 1:nApp
                                 
         % calculates the initial speed and the relative/absolute stimuli
         % response speed values
-        plotD(i).Y0_mn = cellfun(@(x)(nanmedian(x(1:tBefore,:),1)),...
+        xiT = 1:tBefore;
+        plotD(i).Y0_mn = cellfun(@(x)(median(x(xiT,:),1,'omitnan')),...
                                 plotD(i).Y,'un',0);        
         plotD(i).Y_rel = cellfun(@(x,y)(x-repmat(y,size(x,1),1)),...
                                 plotD(i).Y,plotD(i).Y0_mn,'un',0);

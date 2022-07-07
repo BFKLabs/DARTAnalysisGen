@@ -170,12 +170,18 @@ if (nargin == 3)
 end
 
 % converts the solution time arrays into single vectors
+Tmlt = 60;
 T = cellfun(@(x)(cell2mat(x)),field2cell(snTot,'T'),'un',0);
-Tf = cellfun(@(x)(x(end)),T)/60;
+Tf = cellfun(@(x)(x(end)),T)/Tmlt;
+
+% if the experiment duration is small, then use second instead
+if max(Tf) < 1
+    [Tf,Tmlt] = deal(Tf*60,1); 
+end
 
 % checks to see if the solution struct has the sub-region data struct
 ok = checkFuncPara({'AnalysisTimeCheck'},cP,Tf);
-if (~ok); plotD = []; return; end
+if ~ok; plotD = []; return; end
     
 % sets the movement calculation type
 cP.movType = 'Absolute Speed';
@@ -228,29 +234,29 @@ for i = 1:nExp
     iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
         
     % sets the relevant time points and apparatus indices for this expt
-    if (cP.useAll)
+    if cP.useAll
         % uses all the time points
         ii = 1:length(T{i});
     else
         % use only the points from the start to the duration end
-        ii = (T{i} >= 60*cP.T0) & (T{i} <= 60*(cP.T0 + cP.Tdur));
+        ii = (T{i} >= Tmlt*cP.T0) & (T{i} <= Tmlt*(cP.T0 + cP.Tdur));
     end
         
     % rearranges the time and x/y location arrays    
-    Tnw = T{i}(ii)-60*cP.T0;
+    Tnw = T{i}(ii)-Tmlt*cP.T0;
     [isMove,Vtot,Vact,Dact] = calcFlyMove(snTot(i),Tnw,ii,iApp,cP.vAct);
                             
     % calculates the time mid point of each frame, and from this determines
     % the (minute) time group that each frames belong to
-    isOK = diff(Tnw) < 2/FPS;
+    isOK = diff(Tnw) < (2/FPS)*(60/Tmlt);
     for j = 1:length(iApp)  
         % initialisations        
         [k,A] = deal(iApp(j),sum(isMove{j}(isOK,:),1)/sum(isOK));
         ifok = find(snTot(i).iMov.flyok{k});
         
         % sets the metric values
-        plotD(k).Tw(1,ifok,i) = num2cell(60*A);
-        plotD(k).Ts(1,ifok,i) = num2cell(60*(1-A));
+        plotD(k).Tw(1,ifok,i) = num2cell(Tmlt*A);
+        plotD(k).Ts(1,ifok,i) = num2cell(Tmlt*(1-A));
         plotD(k).V(1,ifok,i) = num2cell(Vtot{j});
         plotD(k).Va(1,ifok,i) = num2cell(Vact{j});
         plotD(k).D(1,ifok,i) = num2cell(Dact{j}/1000);

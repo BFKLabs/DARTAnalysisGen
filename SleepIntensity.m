@@ -390,8 +390,8 @@ for i = 1:nApp
                             
             % calculates the initial speed and the relative/absolute 
             % stimuli response speed values   
-            plotD(i).Y0_mn = cellfun(@(x)(...
-                                nanmedian(x(xiT,:),1)),plotD(i).Y,'un',0);        
+            plotD(i).Y0_mn = cellfun(@(x)(median(x(xiT,:),1,'omitnan')),...
+                                plotD(i).Y,'un',0);        
             plotD(i).Y_rel = cellfun(@(x,y)(x-repmat(y,size(x,1),1)),...
                                 plotD(i).Y,plotD(i).Y0_mn,'un',0);
             
@@ -417,7 +417,7 @@ for i = 1:nApp
     [plotD(i).Pr_N, noCount] = deal(nnN, nnN == 0);
         
     % calculates the mean/sem reaction proportion
-    [plotD(i).Pr_P,PR] = deal(nanmean(Y,3));
+    [plotD(i).Pr_P,PR] = deal(mean(Y,3,'omitnan'));
     plotD(i).Pr_sem = sqrt((PR.*(1 - PR))./nnN);
     [plotD(i).Pr_P(noCount),plotD(i).Pr_sem(noCount)] = deal(0);    
     

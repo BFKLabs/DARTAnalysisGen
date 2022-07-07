@@ -314,4 +314,4 @@ tOut = sum(cellfun(@(x)(diff(T(x([1 end])))),outGrp));
 rPosM.prOut = 100*tOut/(tIn+tOut);
 
 % calculates the mean radial distance of the fly over the experiment
-rPosM.R = nanmean(sqrt(X.^2 + Y.^2)*sFac);
+rPosM.R = mean(sqrt(X.^2 + Y.^2)*sFac,'omitnan');

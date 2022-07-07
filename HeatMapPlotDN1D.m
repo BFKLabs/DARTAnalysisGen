@@ -261,22 +261,23 @@ end
 % calculates the final values for all
 for j = 1:nApp
     % sets the plot values (reverses the order for the 2D values)
-    x = nansum(cell2mat(reshape(HistN{j},[1 1 numel(HistN{j})])),3);
+    x = sum(cell2mat(reshape(HistN{j},[1,1,numel(HistN{j})])),3,'omitnan');
     plotD(j).Y = x./repmat(sum(x,2),1,size(x,2));
 
     % calculates the moving mean based on the function type
-    Ex = nansum(Qw.*plotD(j).Y,2);
-    switch (cP.cFunc)
+    Ex = sum(Qw.*plotD(j).Y,2,'omitnan');
+    switch cP.cFunc
         case ('Mean Location') % case is the mean
             plotD(j).Y_mn = Ex;                         
         case ('Median Location') % case is the median
             A = num2cell(cellfun(@(x,y)(x*ones(1,y)),num2cell(Qw),...
                                 num2cell(x),'un',0),2);
-            plotD(j).Y_mn = cellfun(@(x)(nanmedian(cell2mat(x))),A);
+            plotD(j).Y_mn = cellfun(@(x)...
+                                (median(cell2mat(x),'omitnan')),A);
     end      
 
     % calculates the expected location standard error
-    Ex2 = nansum((Qw.^2).*plotD(j).Y,2);
+    Ex2 = sum((Qw.^2).*plotD(j).Y,2,'omitnan');
     plotD(j).Y_sem = sqrt(Ex2-Ex.^2)./sqrt(N(:,j));
 end
         
@@ -599,9 +600,9 @@ end
 
 % for each of the flies, set the histogram
 for k = 1:size(PxN,2) 
-    j = ifok(k);
+    [j,ii] = deal(ifok(k),1:length(indT));
     Htmp = combineNumericCells(cellfun(@(x)(x(k,:)),H,'un',0))';
-    BHistT(:,j) = cellfun(@(x)(setHistArray(Htmp,x)),indT,'un',0);    
+    BHistT(ii,j) = cellfun(@(x)(setHistArray(Htmp,x)),indT,'un',0);    
 end 
 
 % converts the histogram counts to percentages

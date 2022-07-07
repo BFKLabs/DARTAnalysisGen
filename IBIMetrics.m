@@ -188,7 +188,7 @@ for i = 1:nExp
     end
 
     % calculates the video frame rate and experiment apparatus indices
-    FPS = 1/nanmean(diff(T{i}));    
+    FPS = 1/mean(diff(T{i}),'omitnan');    
     iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
     
     % determines the points where there is a large time gap
@@ -497,14 +497,15 @@ mWP = struct('k',kT,'l',lT,'gof',gofT,'xB',xT0,'yR',yTR,'yF',yF);
 y = NaN(length(xT0),numel(IBI));
 for i = 1:numel(IBI)        
     % calculates the weibull parameters
-    if (~isempty(IBI{i}))    
+    if ~isempty(IBI{i})
         N = length(IBI{i});
         [k(i),l(i),gof{i},y(:,i)] = fitWeibullPara(IBI{i},g,xT0);
 
         % calculates the other statistics (if feasible
-        if (~isnan(k(i)))
+        if ~isnan(k(i))
             % calculates the burstiness values 
-            [mIBI,sIBI] = deal(nanmean(IBI{i}),nanstd(IBI{i}));
+            mIBI = mean(IBI{i},'omitnan');
+            sIBI = std(IBI{i},[],'omitnan');
             B(i) = (sIBI - mIBI)/(sIBI + mIBI);
 
             % calculates the memory values
@@ -544,7 +545,7 @@ if (length(IBI) > nMin)
        
     % calculates the IBI time histogram
     y = hist(IBI,x0);
-    y = y(:)/nansum(y);
+    y = y(:)/sum(y,'omitnan');
     
     % Calculate surivival histogram
     x = x0 - bSz/2;
@@ -558,7 +559,8 @@ if (length(IBI) > nMin)
     % Calculate linear fit
     if sum(ii) >= 2 
         % calculates the fit parameters (if enough fit points)
-        fOpt = fitoptions('method','NonlinearLeastSquares','StartPoint',rand(1,2));
+        fOpt = fitoptions('Method','NonlinearLeastSquares',...
+                          'StartPoint',rand(1,2));
         [pExp,gof] = fit(xL(ii),yL(ii),g,fOpt);
         [k,l] = deal(pExp.k,exp(-pExp.A/pExp.k));    
     else

@@ -475,7 +475,7 @@ for i = 1:nApp
                         
     % fits the parameters for the turning direction distributions
     TD = cellfun(@(x)(Tdir{i}(x)),plotD(i).iBin,'un',0);
-    plotD(i).TD = cellfun(@nanmean,TD);    
+    plotD(i).TD = cellfun(@(x)(mean(x,'omitnan')),TD);    
     [plotD(i).pTD,plotD(i).TDfit] = ...
                 fitTurnDirDist(plotD(i).phiB,plotD(i).TD,plotD(i).PA);                                        
 
@@ -695,10 +695,10 @@ switch (pP.pMet)
         % retrieves 
         pType = 'barstack';
         Y = field2cell(p,'DM');       
-        if (pP.plotAvg)
+        if pP.plotAvg
             % combines the data into a single array
             [rotXAx,isSub] = deal(true,false);
-            Y = cell2mat(cellfun(@(x)(nanmean(x,1)),Y,'un',0));
+            Y = cell2mat(cellfun(@(x)(mean(x,1,'omitnan')),Y,'un',0));
                         
             % sets the x-axis properties
             [X,xTick] = deal(1:length(p));
@@ -717,10 +717,10 @@ switch (pP.pMet)
     case ('Threshold Movement Duration')
         % sets the plot values
         TM = field2cell(p,'TM');
-        if (strcmp(pP.pType,'Boxplot'))
+        if strcmp(pP.pType,'Boxplot')
             % sets the plot type
             pType = 'boxplot';            
-            if (pP.plotAvg)
+            if pP.plotAvg
                 % combines the data into a single array for each group
                 TM = cellfun(@(x)(cell2mat(x(:)')),TM,'un',0);                                 
                 [Y,isSub,rotXAx] = deal(combineNumericCells(TM'),false,true);
@@ -731,20 +731,22 @@ switch (pP.pMet)
         else
             % sets the plot type
             pType = 'bar';
-            if (pP.plotAvg)
+            if pP.plotAvg
                 % combines the data into a single cell array
                 TM = cellfun(@(x)(cell2mat(x(:)')),TM,'un',0);                
                 
-                % recalculates the mean/SEM values
-                [Y,isSub,rotXAx] = deal(cellfun(@nanmean,TM),false,true);
-                Ysem = cellfun(@nanstd,TM)./sqrt(cellfun(@length,TM));
+                % recalculates the mean/SEM values                
+                [isSub,rotXAx] = deal(false,true);
+                Y = cellfun(@(x)(mean(x,'omitnan')),TM);
+                Ysd = cellfun(@(x)(std(x,[],'omitnan')),TM);
+                Ysem = Ysd./sqrt(cellfun(@length,TM));
             else                
                 [Y,Ysem] = field2cell(p,{'TM_mn','TM_sem'});
             end
         end
         
         % resets the titles/labels and axis properties
-        if (pP.plotAvg)
+        if pP.plotAvg
             % sets the x-axis properties
             [X,xTick] = deal(1:length(p));
             [xTickLbl,xStr] = deal(field2cell(pF.Title(ind),'String'),'');
@@ -760,10 +762,10 @@ switch (pP.pMet)
     case ('Post-Contact Displacement')
         % sets the plot values
         DE = field2cell(p,'DE');
-        if (strcmp(pP.pType,'Boxplot'))
+        if strcmp(pP.pType,'Boxplot')
             % sets the plot type
             pType = 'boxplot';            
-            if (pP.plotAvg)
+            if pP.plotAvg
                 % combines the data into a single array for each group
                 DE = cellfun(@(x)(cell2mat(x(:)')),DE,'un',0);                                 
                 [Y,isSub,rotXAx] = deal(combineNumericCells(DE'),false,true);
@@ -774,20 +776,22 @@ switch (pP.pMet)
         else
             % sets the plot type
             pType = 'bar';
-            if (pP.plotAvg)
+            if pP.plotAvg
                 % combines the data into a single cell array
                 DE = cellfun(@(x)(cell2mat(x(:)')),DE,'un',0);                
                 
                 % recalculates the mean/SEM values
-                [Y,isSub,rotXAx] = deal(cellfun(@nanmean,DE),false,true);
-                Ysem = cellfun(@nanstd,DE)./sqrt(cellfun(@length,DE));
+                [isSub,rotXAx] = deal(false,true);
+                Y = cellfun(@(x)(mean(x,'omitnan')),DE);
+                Ysd = cellfun(@(x)(std(x,[],'omitnan')),DE);
+                Ysem = Ysd./sqrt(cellfun(@length,DE));
             else                
                 [Y,Ysem] = field2cell(p,{'DE_mn','DE_sem'});
             end                                    
         end
         
         % resets the titles/labels and axis properties
-        if (pP.plotAvg)
+        if pP.plotAvg
             % sets the x-axis properties
             [X,xTick] = deal(1:length(p));
             [xTickLbl,xStr] = deal(field2cell(pF.Title(ind),'String'),'');
@@ -803,10 +807,10 @@ switch (pP.pMet)
     case ('Post-Contact Duration')
         % sets the plot values
         TE = field2cell(p,'TE');
-        if (strcmp(pP.pType,'Boxplot'))
+        if strcmp(pP.pType,'Boxplot')
             % sets the plot type
             pType = 'boxplot';            
-            if (pP.plotAvg)
+            if pP.plotAvg
                 % combines the data into a single array for each group
                 TE = cellfun(@(x)(cell2mat(x(:)')),TE,'un',0);                                 
                 [Y,isSub,rotXAx] = deal(combineNumericCells(TE'),false,true);
@@ -817,20 +821,22 @@ switch (pP.pMet)
         else
             % sets the plot type
             pType = 'bar';
-            if (pP.plotAvg)
+            if pP.plotAvg
                 % combines the data into a single cell array
                 TE = cellfun(@(x)(cell2mat(x(:)')),TE,'un',0);                                 
                 
                 % recalculates the mean/SEM values
-                [Y,isSub,rotXAx] = deal(cellfun(@nanmean,TE),false,true);
-                Ysem = cellfun(@nanstd,TE)./sqrt(cellfun(@length,TE));
+                [isSub,rotXAx] = deal(false,true);
+                Y = cellfun(@(x)(mean(x,'omitnan')),TE);
+                Ysd = cellfun(@(x)(std(x,[],'omitnan')),TE);
+                Ysem = Ysd./sqrt(cellfun(@length,TE));
             else                
                 [Y,Ysem] = field2cell(p,{'TE_mn','TE_sem'});
             end                                    
         end
         
         % resets the titles/labels and axis properties
-        if (pP.plotAvg)
+        if pP.plotAvg
             % sets the x-axis properties
             [X,xTick] = deal(1:length(p));
             [xTickLbl,xStr] = deal(field2cell(pF.Title(ind),'String'),'');
@@ -846,18 +852,19 @@ switch (pP.pMet)
     case ('Post-Contact Direction Change')
         % sets the plot values
         [DT,pType] = deal(field2cell(p,'DT'),'bar');
-        if (pP.plotAvg)
+        if pP.plotAvg
             % combines the data into a single cell array
             DT = cellfun(@(x)(cell2mat(x(:)')),DT,'un',0);                
 
             % recalculates the mean/SEM values
-            [Y,isSub,rotXAx] = deal(cellfun(@nanmean,DT),false,true);            
+            [isSub,rotXAx] = deal(false,true);
+            Y = cellfun(@(x)(mean(x,'omitnan')),DT);
         else                
-            Y = cellfun(@(x)(cellfun(@nanmean,x)),DT,'un',0);
+            Y = cellfun(@(x)(cellfun(@(y)(mean(y,'omitnan')),x)),DT,'un',0);
         end                                    
         
         % resets the titles/labels and axis properties
-        if (pP.plotAvg)
+        if pP.plotAvg
             % sets the x-axis properties
             [X,xTick] = deal(1:length(p));
             [xTickLbl,xStr] = deal(field2cell(pF.Title(ind),'String'),'');
