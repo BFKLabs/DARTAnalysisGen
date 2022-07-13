@@ -248,6 +248,7 @@ pF = retFormatStruct(pF,nApp);
 % ----------------------- %
 
 % retrieves the X/Y values
+dH = 0.075;
 [X,Y] = field2cell(p,{'X','Y'});
 pP.nRow = min(pP.nRow,max(cellfun(@(x)(size(x,2)),X)));
 
@@ -255,19 +256,21 @@ pP.nRow = min(pP.nRow,max(cellfun(@(x)(size(x,2)),X)));
 for i = 1:nApp
     % creates the subplot axis
     hAx(i) = axes('OuterPosition',calcOuterPos(1,nApp,i),'parent',hP); 
+    resetObjPos(hAx(i),'Bottom',-dH,1);
+    resetObjPos(hAx(i),'Height',dH,1);
     hold(hAx(i),'on');    
         
     % determines the optimal configuration
-    if (i == 1)        
+    if i == 1 
         [nRow,nCol] = detMostSquareSetup(hAx(i),pP.nRow);
         [delX,delY] = deal(1e-4*nCol,1e-4*nRow);
     end    
         
     % sets the actual plot index and creates the subplot region
-    if (size(X{i},2) < pP.nRow)
+    if size(X{i},2) < pP.nRow
         iPlt = 1:size(X{i},2);
     else
-        if (pP.pltAvg)
+        if pP.pltAvg
             % plots the traces that are closest to the average displacement
             [~,a] = sort(abs(p(i).Davg - median(p(i).Davg)),'ascend');
             iPlt = a(1:pP.nRow); iPlt = iPlt(randperm(pP.nRow));
