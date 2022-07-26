@@ -140,8 +140,9 @@ if (nargin == 3)
 end
 
 % converts the solution time arrays into single vectors
+Tmlt = 60;
 T = cellfun(@(x)(cell2mat(x)),field2cell(snTot,'T'),'un',0);
-Tf = cellfun(@(x)(x(end)),T)/60;
+Tf = cellfun(@(x)(x(end)),T)/Tmlt;
 
 % if the experiment duration is small, then use second instead
 if max(Tf) < 1
