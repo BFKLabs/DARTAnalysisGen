@@ -453,8 +453,8 @@ setObjVisibility(hAx2,'on')
 % --- function for calculating the data for the analysis figure --- %
 function [pData,plotD] = outFunc(pData,plotD,snTot)
     
-% removes the flag for the population variable
-pData.oP.yVar(1).Type(:) = false;
+% % removes the flag for the population variable
+% pData.oP.yVar(1).Type(:) = false;
 
 % ----------------------------------------------------------------------- %
 % ---                        OTHER FUNCTIONS                          --- %

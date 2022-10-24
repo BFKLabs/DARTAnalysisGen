@@ -98,13 +98,13 @@ end
 function oP = initOutputPara(snTot)
 
 % initialisations
-oP = setupOutputParaStruct(snTot,true,false,false);
+oP = setupOutputParaStruct(snTot,false,false,false);
 
 % sets the independent variable fields
 oP = addXVarField(oP,'Time','T','Time');
 
 % sets the dependent variable fields
-oP = addYVarField(oP,'Position','X',[],5,{'T'},1);
+oP = addYVarField(oP,'Position','YD',[],5,{'T'},1);
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
@@ -132,38 +132,41 @@ ii = 1:cP.sRate:length(T);
 
 % memory allocation
 plotD = initPlotValueStruct(snTot,pData,cP,...
-                                'T',T(ii),'Y',[],'X',[]);
+                                'T',T(ii),'Y',[],...
+                                'TD',[],'YD',[]);
 
 % memory allocation                            
-nDay = size(plotD(1).X,1);                  
+nDay = size(plotD(1).YD,1);                  
 
 % ---------------------------- %
 % --- FLY LOCATION SETTING --- %
 % ---------------------------- %
 
 % determines the 
+sFac = snTot.sgP.sFac;
 tRate = mean(diff(T(ii)));
 indD = detTimeGroupIndexArray(T(ii),snTot.iExpt(1),tRate,cP.Tgrp0);
 
 % sets the position values for all the apparatus
 for i = 1:nApp
-    nFly = size(snTot.Px{i},1);
-    Px = snTot.Px{i} - repmat(min(snTot.Px{i},[],1),nFly,1);
-    Px = Px./repmat(max(Px,[],1),nFly,1);
+    iC = snTot.iMov.iC{i};
+    xOfs = sFac*(iC(1)-1);
+    Px = (snTot.Px{i}-xOfs)/(sFac*range(iC));
         
     % retrieves the array of x-locations
-    plotD(i).Y = Px(ii,:);    
+    plotD(i).Y = 1 - Px(ii,:);    
     xPx = snTot.Px{i}(ii,:);
     
     % sets the speed values for each of the days    
-    plotD(i).X = repmat({NaN(size(indD,1),1)},nDay,size(plotD(i).X,2));
-    for j = 1:nDay
-        jj = ~isnan(indD(:,j));        
+    plotD(i).YD = repmat({NaN(length(ii),1)},1,size(plotD(i).YD,2));
+    for j = 1:nDay       
         for k = 1:size(xPx,2)
-            plotD(i).X{j,k,1}(jj) = xPx(indD(jj,j),k);
+            plotD(i).YD{j,k,1} = xPx(:,k);
         end
     end
 end
+
+a = 1;
 
 % ----------------------------------------------------------------------- %
 % ---                        PLOTTING FUNCTION                        --- %
@@ -216,7 +219,7 @@ pF.Axis(1).Font.FontSize = pF.Axis(1).Font.FontSize - 4*(nFly > 20);
 % ----------------------- %
 
 % plots the day/night bands (if required)
-if (pP.pltDN)
+if pP.pltDN
     hAx = plotDayNightGraph(hP,snTot,p.T*tMlt,nFly+1,1,[1,1],tMlt);
 else
     hAx = createSubPlotAxes(hP);
@@ -227,10 +230,10 @@ end
 hold(hAx,'on'); axis(hAx,'on')
 for i = 1:nFly
     % sets the plot colour/position values
-    if (flyok(i))
+    if flyok(i)
         pCol = getTraceColour(mod(i-1,4)+1);        
     else
-        if (pP.pltRej)
+        if pP.pltRej
             pCol = 'k';
         else
             pCol = [];
@@ -258,7 +261,7 @@ end
 % snTot.iExpt.Timing.T0 = datevec(addtodate(datenum(snTot.iExpt.Timing.T0),Tadd,'s'));
     
 % case is using the absolute time axis
-if (pP.isZeitG)            
+if pP.isZeitG            
     % case is using Zeitgeiber time
     setZeitGTimeAxis(hAx,p.T,snTot);   
     pF.xLabel.String = 'Zeitgeiber Time';

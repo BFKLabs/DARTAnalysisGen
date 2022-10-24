@@ -157,7 +157,7 @@ Tbin = (tBin:tBin:60)-(tBin/2);
 Tgrp = setTimeBinStrings(tBin,nGrp);
 
 % sets the day/night strings (if separating activity by day/night)
-if (cP.sepDN)
+if cP.sepDN
     % data is separated by day/night
     dnStr = {'Day','Night'};        
 else
@@ -202,7 +202,7 @@ for i = 1:nExp
     
     % calculates the new sleep intensity data
     [YcountNw,YcountRNw] = getStimuliResponseData(snTot(i),cP,h,wOfs);            
-    if (isempty(YcountNw))
+    if isempty(YcountNw)
         % if the user cancelled, then exit the function
         [plotD,ok] = deal([],false);
         return
@@ -211,7 +211,7 @@ for i = 1:nExp
         for j = 1:nApp
             % sets the total/reaction counts            
             Nc = [1 1 numel(YcountNw{j})];
-            if (prod(Nc) > 0)                
+            if prod(Nc) > 0               
                 % 
                 [iR, iC] = deal(1:size(YcountNw{j},1), 1:size(YcountNw{j},2));
                 plotD(j).Hist(iR,iC,i) = YcountNw{j};

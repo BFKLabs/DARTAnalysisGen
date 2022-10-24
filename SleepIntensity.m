@@ -195,7 +195,7 @@ Stats3 = {'GOF','Tgrp','dnStr'};
 % sets the independent variable fields
 oP = addXVarField(oP,'Time','T','Time');
 oP = addXVarField(oP,'Time Bin','Tgrp','Group');
-oP = addXVarField(oP,'Stimuli Index','dnStr','Other');
+oP = addXVarField(oP,'Day/Night','dnStr','Other');
 
 % sets the dependent variable fields
 oP = addYVarField(oP,'Speed (Abs)','Y',[],Type1,xDep1);
@@ -271,7 +271,7 @@ Tbin = Tbin(Tbin <= max(convertTime(dTs,'sec','min')));
 Tgrp = setTimeBinStrings(tBin,nGrp);
 
 % sets the day/night strings (if separating activity by day/night)
-if (cP.sepDN)
+if cP.sepDN
     % data is separated by day/night
     dnStr = {'Day','Night'};        
 else
@@ -313,7 +313,7 @@ wStr = wStr((2-wOfs):end);
 h = ProgBar(wStr,'Sleep Intensity Calculations');
 
 % loops through each of the 
-for i = 1:nExp    
+for i = 1:nExp
     % updates the waitbar figure (if more than one solution file)
     if wOfs > 0    
         wStrNw = sprintf('%s (Experiment %i of %i)',wStr{1},i,nExp);
@@ -323,7 +323,7 @@ for i = 1:nExp
     % calculates the new sleep intensity data
     [YcountNw,YcountRNw,XbinNw,YbinNw,ok] = ...
                             getStimuliResponseData(snTot(i),cP,h,wOfs);        
-    if (~ok)
+    if ~ok
         % if the user cancelled, then exit the function
         plotD = [];
         return
@@ -344,7 +344,7 @@ for i = 1:nExp
             end
             
             % appends the y-positional data to the arrays
-            if ((Nc(3) > 0) && (~isempty(YbinNw)))
+            if (Nc(3) > 0) && ~isempty(YbinNw)
                 YbinNwT = cell2cell(cellfun(@(y)(cellfun(@(x)(cell2mat(x)),...
                                 num2cell(cell2cell(y,0),2),'un',0)),...
                                 num2cell(YbinNw{j},1),'un',0),0);
@@ -355,7 +355,7 @@ for i = 1:nExp
                 end
             end           
                                   
-            if (prod(Nc)>0)
+            if prod(Nc) > 0
                 % sets the total/reaction counts
                 [iR, iC] = deal(1:size(YcountNw{j},1), 1:size(YcountNw{j},2));
                 plotD(j).Hist(iR,iC,i) = YcountNw{j};
@@ -382,7 +382,7 @@ for i = 1:nApp
     end                
     
     % calculates the metrics/signals for all groups
-    for j = 1:(1+cP.sepDN)   
+    for j = 1:(1+cP.sepDN)
         if ~all((Ycount{i}(j,:)) == 0)
             % calculates the average speed        
             [plotD(i).Y,plotD(i).Y_sem] = ...
@@ -793,8 +793,8 @@ resetAxesPos(hAxS,1,nSub,[0.01 0])
 % --- AVERAGE VELOCITY TRACES --- %
 % ------------------------------- %
 
-% makes the stimuli response trace axes current
-set(gcf,'CurrentAxes',hAx)
+% % makes the stimuli response trace axes current
+% set(gcf,'CurrentAxes',hAx)
 
 % sets the overall maximum
 YSRmn = min(cell2mat(cellfun(@(x,y)(min(x{1}(:)-y{1}(:))),...
