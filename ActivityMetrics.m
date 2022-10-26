@@ -507,6 +507,7 @@ else
     end             
     
     % removes all the text labels
+    set(hAx,'xlim',[0,size(Yplt,2)]+0.5)
     delete(findall(hAx,'type','text'))        
 end
         

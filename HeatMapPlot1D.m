@@ -287,7 +287,7 @@ yTick = cell2mat(cellfun(@(x)(YY+(x-1)*(rBin+1)),num2cell((1:nApp)'),'un',0));
 
 % parameters
 xLim = [1 max(cellfun(@(x)(size(x,1)),field2cell(p,'Y')))];
-[xFill,yFill] = deal(xLim([1 2 2 1]),[0 0 1 1]);
+[xFill,yFill] = deal(xLim([1 2 2 1])+0.5*[-1,1,1,-1],[0 0 1 1]);
 
 % sets the entire heatmap image
 CAll = NaN(nApp*rBin+(nApp-1)*dY,size(p(1).Y,1));
@@ -315,7 +315,7 @@ for j = nApp:-1:1
     yOfs = (i-1)*(rBin+1);
     set(gca,'linewidth',1.5,'box','on')
 
-    % if not the 
+    % creates the gap between the 
     if (i ~= nApp)
         fill(xFill,yFill+(i*(rBin+1)-0.5),0.5*[1 1 1])
     end 
