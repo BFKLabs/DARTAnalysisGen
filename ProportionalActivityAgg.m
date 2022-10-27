@@ -6,7 +6,7 @@ function pData = ProportionalActivityAgg(snTot)
 pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);    
 
 % sets the function name/type
-pData.Name = 'Aggregate Proportional Activity-Inactivity (Short)';
+pData.Name = 'Aggregate Activity Proportion';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 2 1];
 pData.rI = initFuncReqInfo(pData);

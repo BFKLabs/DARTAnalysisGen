@@ -53,20 +53,22 @@ function cP = initCalcPara(snTot)
 
 % initialises the parameter struct
 nPara = 1;
+sz0 = [1 2 4 6 8 12 24];
 cP = setParaFields(nPara);
+
+% determines if the experiment is long (if not reduce the group size list)
 isLong = ~detIfShortExpt(field2cell(snTot,'T'));
+if ~isLong; sz0 = sz0(1); end
 
 % sets the tab list names
 a = {'1 - General'};
 
 % sets the parameter list for 
-pList = cellfun(@num2str,num2cell([1 2 4 6 8 12 24]),'un',0);
+pList = cellfun(@num2str,num2cell(sz0),'un',0);
 
 % sets the parameter fields
-cP(1) = setParaFields(a{1},'List',{1+isLong,pList},...
-                    'nGrp','Number of Daily Time Groups',[],{0,~isLong});
-
-% sets the tool-tip strings
+cP(1) = setParaFields(a{1},'List',{1+isLong,pList},'nGrp',...
+    'Number of Daily Time Groups',[],{0,~isLong});
 cP(1).TTstr = 'The number of groups that the day is split up into';
 
 % --- initialises the calculation parameter function --- %

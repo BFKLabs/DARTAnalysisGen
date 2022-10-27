@@ -6,7 +6,7 @@ function pData = ProportionalActivity(snTot)
 pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);    
 
 % sets the function name/type
-pData.Name = 'Temporal Proportional Activity-Inactivity (Short)';
+pData.Name = 'Temporal Activity Proportion';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 2 1];
 pData.rI = initFuncReqInfo(pData);

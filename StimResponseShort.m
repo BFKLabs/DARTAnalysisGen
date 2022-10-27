@@ -6,7 +6,7 @@ function pData = StimResponseShort(snTot)
 pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);    
 
 % sets the function name/type
-pData.Name = 'Stimuli Response Curve Fitting (Short)';
+pData.Name = 'Stimuli Response (Short)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 2 1];
 pData.rI = initFuncReqInfo(pData);
