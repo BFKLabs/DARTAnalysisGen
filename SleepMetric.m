@@ -69,7 +69,7 @@ pList = cellfun(@num2str,num2cell(sz0),'un',0);
 
 % sets the parameter fields
 cP(1) = setParaFields(a{1},'List',{1+isLong,pList},'nGrp',...
-    'Number of Daily Time Groups',[],{1,~isLong});
+    'Number of Daily Time Groups',[],{0,~isLong});
 cP(1).TTstr = 'The number of groups that the day is split up into';
 
 % --- initialises the calculation parameter function --- %
