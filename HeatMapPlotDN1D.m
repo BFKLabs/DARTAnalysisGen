@@ -541,7 +541,7 @@ if (isempty(ifok))
 end
 
 % % determines the 
-% jj = find(~cellfun(@isempty,ii));
+% jj = find(~cellfun('isempty',ii));
 % ii = ii(jj);
 % 
 % % sets the day indices 
@@ -550,14 +550,14 @@ end
 % indT(sub2ind(size(indT),iR,iC)) = 1:length(iR);
 
 % determines the 
-jj = find(~cellfun(@isempty,ii));
+jj = find(~cellfun('isempty',ii));
 
 % inserts NaN's to make sure the day's align correctly
 i0 = jj(cellfun(@(x)(x(1)),ii(jj))==1);
 
 %
 kk = 1:(i0-1);
-isNE = kk(~cellfun(@isempty,ii(kk)));
+isNE = kk(~cellfun('isempty',ii(kk)));
 ii(isNE) = cellfun(@(x)([NaN,x]),ii(isNE),'un',0);
 
 % converts the indices into 

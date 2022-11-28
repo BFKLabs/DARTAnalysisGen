@@ -74,7 +74,7 @@ function pP = initPlotPara(snTot)
 
 % retrieves the stimuli marker time-stamps
 Ts = arrayfun(@(x)(getMotorFiringTimes(x.stimP)),snTot,'un',0);
-hasStim = ~any(cellfun(@isempty,Ts));
+hasStim = ~any(cellfun('isempty',Ts));
 
 % initialises the parameter struct
 nPara = 4 + hasStim;                      
@@ -184,7 +184,7 @@ for i = 1:nExp
 
     % calculates the video frame rate and experiment apparatus indices
     FPS = snTot(i).sgP.fRate/snTot(i).sgP.sRate;
-    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
     
     % sets the relevant time points and apparatus indices for this expt
     if cP.useAll
@@ -219,16 +219,16 @@ end
 for i = 1:nApp
     % sets the inactivity values for the current group
     Inw = plotD(i).I(:)';
-    Inw = Inw(~cellfun(@isempty,Inw));
+    Inw = Inw(~cellfun('isempty',Inw));
             
     % sets all of the experiments into a single array
-    plotD(i).IT = false(max(cellfun(@length,Inw)),length(Inw));
+    plotD(i).IT = false(max(cellfun('length',Inw)),length(Inw));
     for j = 1:length(Inw)
         plotD(i).IT(1:length(Inw{j}),j) = Inw{j};
     end
     
     % sets the time vector
-    plotD(i).T = TT{argMax(cellfun(@length,TT))}*60;
+    plotD(i).T = TT{argMax(cellfun('length',TT))}*60;
 end
     
 % closes the waitbar figure
@@ -315,7 +315,7 @@ pF.Title = pF.Title(ind);
 yy = (pP.nHght+pP.nGap); 
 
 % determines the frame index when the stimuli events took place
-ii = ~cellfun(@isempty,Ts);
+ii = ~cellfun('isempty',Ts);
 if (any(ii))
     TsMn = groupStimTimes(cell2mat(Ts));
     TsMn = TsMn((TsMn - cP.T0) < cP.Tdur) - cP.T0;        

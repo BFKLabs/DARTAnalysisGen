@@ -171,7 +171,7 @@ h = ProgBar(wStr,'Activity Calculations');
 nFly = zeros(nApp,1);
 for i = 1:length(snTot)
     % sets the number of flies in the experiment
-    nFly = max(nFly,cellfun(@length,snTot(i).iMov.flyok));
+    nFly = max(nFly,cellfun('length',snTot(i).iMov.flyok));
 end
 
 % ------------------------------------------------------- %
@@ -189,7 +189,7 @@ for i = 1:nExp
 
     % calculates the video frame rate and experiment apparatus indices
     FPS = 1/mean(diff(T{i}),'omitnan');    
-    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
     
     % determines the points where there is a large time gap
     Tp = snTot(i).iExpt.Timing.Tp*3;
@@ -269,7 +269,7 @@ for i = 1:nApp
                             tGrpStop,tGrpMove,isStart,'un',0);                       
                 
             % sets the raw action initiation values
-            kk = ~cellfun(@isempty,tGrpStop);
+            kk = ~cellfun('isempty',tGrpStop);
             ifok = find(snTot(j).iMov.flyok{i});
             IBIR(j,ifok(kk)) = tGrpStop(kk);
         end        

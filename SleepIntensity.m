@@ -740,7 +740,7 @@ set(hAx,'OuterPosition',[0,0.5,1,1/2],'UserData',1,'box','on')
 % ----------------------------------------------- %
 
 % sets the axis maximum
-pD = plotD(~cellfun(@isempty,field2cell(plotD,'Y')));
+pD = plotD(~cellfun('isempty',field2cell(plotD,'Y')));
 
 % sets the parameter strings
 col = getBarColourScheme(nGrp,'m');

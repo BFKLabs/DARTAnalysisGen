@@ -320,7 +320,7 @@ for i = 1:nExp
         
     % sets the video/stimuli time stamps into a single vector
     [flyok,Ttot] = deal(snTot(i).iMov.flyok,cell2mat(snTot(i).T));   
-%     Ts = snTot(i).Ts(~cellfun(@isempty,snTot(i).Ts));    
+%     Ts = snTot(i).Ts(~cellfun('isempty',snTot(i).Ts));    
     if ~isempty(Ts{i})
         % sets the indices for the pre/post stimuli phases
         nFlyR = cellfun(@sum,flyok);
@@ -338,7 +338,7 @@ for i = 1:nExp
                         'last')+1):find(Ttot<x,1,'last')),Ts{i},'un',0);  
                 
             % determines the non-empty regions and allocates memory
-            jj = ~cellfun(@isempty,indM);
+            jj = ~cellfun('isempty',indM);
             Pm = repmat({cell(size(indV))},1,2);            
         end                      
                     
@@ -597,7 +597,7 @@ end
 % bug error fix - this removes any extraneneous axes from the figure
 try
     hAxT = findobj(gcf,'type','axes');
-    delete(hAxT(cellfun(@isempty,get(hAxT,'UserData'))))
+    delete(hAxT(cellfun('isempty',get(hAxT,'UserData'))))
 end
 
 % ------------------------------- %
@@ -662,7 +662,7 @@ plot(hAx,[0 0],yL,'r--','linewidth',1.5,'tag','hStim')
 % if not plotting the metrics, then exit the function
 if (~pP.incMet)                           
     % creates the legend object using the formatting data struct    
-    ii = ~cellfun(@isempty,hPlot);
+    ii = ~cellfun('isempty',hPlot);
     if (any(ii) && (nApp > 1))
         % sets the legend strings
         pF.Legend.String = cellfun(@(x,y)(sprintf('%s (N = %i)',x,y)),...
@@ -694,7 +694,7 @@ end
 [xLim,Wax,maxAxR] = deal(get(hAx,'xlim'),0.97,100);
 
 % sets the new left location of the main trace plot
-pD = plotD{1}(~cellfun(@isempty,field2cell(plotD{1},'Y')));
+pD = plotD{1}(~cellfun('isempty',field2cell(plotD{1},'Y')));
 [pLbl,pAx] = deal(get(get(hAx,'yLabel'),'Extent'),get(hAx,'position'));
 pAx(1) = pAx(3)*(xLim(1)-pLbl(1))/diff(xLim);
 

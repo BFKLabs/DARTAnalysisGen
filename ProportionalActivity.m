@@ -201,7 +201,7 @@ for i = 1:nExp
     
     % calculates the video frame rate and experiment apparatus indices
     FPS = snTot(i).sgP.fRate/snTot(i).sgP.sRate;
-    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
     
     % sets the relevant time points and apparatus indices for this expt
     if cP.useAll
@@ -304,7 +304,7 @@ if (sP.Sub.isComb)% || (all([m n] == 1))
     pF.Legend.String = snTot(1).iMov.pInfo.gName;
     for i = 1:length(pF.Title); pF.Title(i).String = ''; end
     
-elseif (all(cellfun(@isempty,field2cell(pF.Title,'String'))))
+elseif (all(cellfun('isempty',field2cell(pF.Title,'String'))))
     % titles are empty, so reset them to the apparatus names
     for i = 1:length(pF.Title) 
         pF.Title(i).String = snTot(1).iMov.pInfo.gName{i}; 
@@ -388,7 +388,7 @@ for j = 1:nApp
         %
         Y0 = cellfun(@(x)(x.*(~isinf(x))),p(j).Y,'un',0); 
         Y1 = {reshape(Y0,[1 1 numel(Y0)])}; 
-        Y2 = cellfun(@(x)(combineNumericCells3(x(~cellfun(@isempty,x)))),Y1,'un',0); 
+        Y2 = cellfun(@(x)(combineNumericCells3(x(~cellfun('isempty',x)))),Y1,'un',0); 
         
         %
         hPlot{j} = plot(hAxNw,p(j).Tbin,100*squeeze(Y2{1}),'linewidth',pP.lWid);

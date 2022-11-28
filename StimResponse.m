@@ -326,7 +326,7 @@ for i = 1:nExp
     % sets the video/stimuli time stamps into a single vector
     [flyok,Ttot] = deal(snTot(i).iMov.flyok,cell2mat(snTot(i).T));
     [Ts0,~] = getMotorFiringTimes(snTot(i).stimP,devType,chType);
-%     Ts = snTot(i).Ts(~cellfun(@isempty,snTot(i).Ts));    
+%     Ts = snTot(i).Ts(~cellfun('isempty',snTot(i).Ts));    
     if ~isempty(Ts0)
         % determines the indices of the stimuli events within the total
         % experiment, and determines what time groups that the stimuli
@@ -340,7 +340,7 @@ for i = 1:nExp
         % sets the indices for the pre-stimuli phase
         indV = cellfun(@(x)(find(Ttot>(x-(tBefore+cP.nAvg+1)),1,'first'):...
                             find(Ttot<(x+tAfter),1,'last')),Ts,'un',0);  
-        ii = ~cellfun(@isempty,indV);               
+        ii = ~cellfun('isempty',indV);               
         
         % sets the total signals for the pre/post stimuli signals
         iTot = cell(size(indV));
@@ -355,7 +355,7 @@ for i = 1:nExp
                         'last')+1):find(Ttot<x,1,'last')),Ts(ii),'un',0);  
                 
             % determines the non-empty regions and allocates memory
-            jj = ii & ~cellfun(@isempty,indM);
+            jj = ii & ~cellfun('isempty',indM);
             Pm = repmat({cell(size(indV))},1,2);            
         end                
                 
@@ -626,7 +626,7 @@ end
 % bug error fix - this removes any extraneneous axes from the figure
 try
     hAxT = findobj(gcf,'type','axes');
-    delete(hAxT(cellfun(@isempty,get(hAxT,'UserData'))))
+    delete(hAxT(cellfun('isempty',get(hAxT,'UserData'))))
 end
 
 % ------------------------------- %
@@ -707,7 +707,7 @@ plot(hAx,[0 0],yLim,'r--','linewidth',1.5)
 % if not plotting the metrics, then exit the function
 if (~pP.incMet)                           
     % creates the legend object using the formatting data struct    
-    ii = ~cellfun(@isempty,hPlot);
+    ii = ~cellfun('isempty',hPlot);
     if (any(ii) && (nGrp > 1))
         % creates the legend
         pF.Legend.String = cellfun(@(x,y)(sprintf('%s (N = %i)',x,y)),...
@@ -729,7 +729,7 @@ end
 [xLim,Wax,Ymx,maxAxR] = deal(get(hAx,'xlim'),0.97,zeros(1,nSub),100);
 
 % sets the upper/lower limits
-pD = plotD{1}(~cellfun(@isempty,field2cell(plotD{1},'Y')));
+pD = plotD{1}(~cellfun('isempty',field2cell(plotD{1},'Y')));
 if (pP.plotFixedM)
     % amplitude maximum limits
     if (pP.plotRaw)

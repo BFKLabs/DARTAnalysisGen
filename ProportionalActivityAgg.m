@@ -231,7 +231,7 @@ for i = 1:nExp
     
     % calculates the video frame rate
     FPS = snTot(i).sgP.fRate/snTot(i).sgP.sRate;
-    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
         
     % sets the relevant time points and apparatus indices for this expt
     if cP.useAll

@@ -214,7 +214,7 @@ for i = 1:nExp
     % the bins which has at least two time points
     h.Update(1+wOfs,'Determining Time Bins',0.50);
     indB = detTimeBinIndices(Ttot,cP.tBin);
-    indB(cellfun(@length,indB) < cP.tBin/2) = {[]};        
+    indB(cellfun('length',indB) < cP.tBin/2) = {[]};        
     
     % calculates the sleep metrics
     for j = 1:nApp

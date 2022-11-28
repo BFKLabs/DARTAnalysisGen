@@ -251,7 +251,7 @@ for i = 1:nExp
     end
 
     % calculates the video frame rate and experiment apparatus indices        
-    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));     
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));     
 
     % sets the relevant time points and apparatus indices for this expt
     if cP.useAll
@@ -425,13 +425,13 @@ for i = 1:nExp
                     
                     % determines if duration at which the fly stays within
                     % the edge region
-                    TedgeNw{k} = cellfun(@length,iGrp{k});
+                    TedgeNw{k} = cellfun('length',iGrp{k});
                 end            
             end
         end       
         
         % append that data to the overall arrays
-        ii = ~cellfun(@isempty,PhiAppNw);
+        ii = ~cellfun('isempty',PhiAppNw);
         PhiApp{iApp(j)} = [PhiApp{iApp(j)};cell2mat(PhiAppNw(ii))];
         Dmove{iApp(j)} = [Dmove{iApp(j)};cell2mat(DmoveNw(ii))];        
         Dturn{iApp(j)} = [Dturn{iApp(j)};cell2mat(DturnNw(ii))];        
@@ -470,7 +470,7 @@ for i = 1:nApp
                         
     % fits the parameters for the approach angle PDF 
     PA = cellfun(@(x)(PhiApp{i}(x)),plotD(i).iBin,'un',0);    
-    plotD(i).PA = cellfun(@length,PA);
+    plotD(i).PA = cellfun('length',PA);
     [plotD(i).pPA,plotD(i).PAfit] = fitBimodalDist(plotD(i).phiB,plotD(i).PA);                          
                         
     % fits the parameters for the turning direction distributions
@@ -739,7 +739,7 @@ switch (pP.pMet)
                 [isSub,rotXAx] = deal(false,true);
                 Y = cellfun(@(x)(mean(x,'omitnan')),TM);
                 Ysd = cellfun(@(x)(std(x,[],'omitnan')),TM);
-                Ysem = Ysd./sqrt(cellfun(@length,TM));
+                Ysem = Ysd./sqrt(cellfun('length',TM));
             else                
                 [Y,Ysem] = field2cell(p,{'TM_mn','TM_sem'});
             end
@@ -784,7 +784,7 @@ switch (pP.pMet)
                 [isSub,rotXAx] = deal(false,true);
                 Y = cellfun(@(x)(mean(x,'omitnan')),DE);
                 Ysd = cellfun(@(x)(std(x,[],'omitnan')),DE);
-                Ysem = Ysd./sqrt(cellfun(@length,DE));
+                Ysem = Ysd./sqrt(cellfun('length',DE));
             else                
                 [Y,Ysem] = field2cell(p,{'DE_mn','DE_sem'});
             end                                    
@@ -829,7 +829,7 @@ switch (pP.pMet)
                 [isSub,rotXAx] = deal(false,true);
                 Y = cellfun(@(x)(mean(x,'omitnan')),TE);
                 Ysd = cellfun(@(x)(std(x,[],'omitnan')),TE);
-                Ysem = Ysd./sqrt(cellfun(@length,TE));
+                Ysem = Ysd./sqrt(cellfun('length',TE));
             else                
                 [Y,Ysem] = field2cell(p,{'TE_mn','TE_sem'});
             end                                    
@@ -1092,7 +1092,7 @@ else
                 end
 
                 set(hAx,'UserData',uData0)
-                delete(hText(~cellfun(@isempty,tStr)));
+                delete(hText(~cellfun('isempty',tStr)));
             end
         case ('plot')
             hPlt = plot(X,Y);

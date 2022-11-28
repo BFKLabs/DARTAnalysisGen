@@ -257,7 +257,7 @@ end
 
 % sets the final pre/post stimuli event velocities (for each apparatus)
 for i = 1:nApp            
-    if (~all(cellfun(@isempty,plotD(i).V1(:))))
+    if (~all(cellfun('isempty',plotD(i).V1(:))))
         % sets/calculates the plot values
         plotD(i).M = cellfun(@(x,y)((x./y)),plotD(i).V2,plotD(i).V1,'un',0);
         
@@ -339,7 +339,7 @@ pF.Legend(1).String = lStr1(iPlotT);
 
 % sets the main title string
 pF.Title(1).String = pF.Axis(1).String{sP.pInd};
-a = (~cellfun(@isempty,p.V1) & ~cellfun(@isempty,p.V2));
+a = ~cellfun('isempty',p.V1) & ~cellfun('isempty',p.V2);
 
 % sets the polar plot labels
 if pP.plotPolar
@@ -524,7 +524,7 @@ axis(hAxM,'off');
 %
 V1 = cellfun(@(x)(mean(x,1,'omitnan')),p.V1,'un',0);
 V2 = cellfun(@(x)(mean(x,1,'omitnan')),p.V2,'un',0);
-[V1,V2] = deal(V1(~cellfun(@isempty,V1(:))),V2(~cellfun(@isempty,V2(:))));
+[V1,V2] = deal(V1(~cellfun('isempty',V1(:))),V2(~cellfun('isempty',V2(:))));
 [V1,V2] = deal(cell2mat(V1(:)),cell2mat(V2(:)));
 
 %
@@ -560,13 +560,13 @@ else
         V1Tmn = cellfun(@(y)(cellfun(@(x)...
                         (mean(x,1,'omitnan')),y(:),'un',0)),V1T,'un',0);
         V1Tmn = cellfun(@(y)(max...
-                        (max(cell2mat(y(~cellfun(@isempty,y)))))),V1Tmn);
+                        (max(cell2mat(y(~cellfun('isempty',y)))))),V1Tmn);
         
         % determines the max mean V2 values
         V2Tmn = cellfun(@(y)(cellfun(@(x)...
                         (mean(x,1,'omitnan')),y(:),'un',0)),V2T,'un',0);
         V2Tmn = cellfun(@(y)(max...
-                        (max(cell2mat(y(~cellfun(@isempty,y)))))),V2Tmn);
+                        (max(cell2mat(y(~cellfun('isempty',y)))))),V2Tmn);
         
         % sets the overall limit 
         VLim0 = [detOverallLimit(V1Tmn),detOverallLimit(V2Tmn)];

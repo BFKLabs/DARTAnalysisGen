@@ -149,7 +149,7 @@ isN = sqrt(x.^2 + y.^2) > 0.5;
 if (isDN); isN = [isN,true(nG,dnDel),isN]; end
 
 % calculates the video frame rate and experiment apparatus indices
-iApp = find(~cellfun(@isempty,snTot.iMov.flyok));
+iApp = find(~cellfun('isempty',snTot.iMov.flyok));
 szHM = nG*[1 (1+isDN)] + [0 dnDel*isDN];
 
 % --------------------------------- %

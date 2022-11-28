@@ -218,7 +218,7 @@ for i = 1:nExp
                 plotD(j).HistR(iR,iC,i) = YcountRNw{j};
                 
 %                 %
-%                 ii = any(~cellfun(@isempty,plotD(j).Hist(:,:,i)),2);
+%                 ii = any(~cellfun('isempty',plotD(j).Hist(:,:,i)),2);
 %                 plotD(j).Hist(:,:,i) = plotD(j).Hist(ii,:,i);
 %                 plotD(j).HistR(:,:,i) = plotD(j).HistR(ii,:,i);                
 

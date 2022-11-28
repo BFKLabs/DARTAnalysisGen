@@ -210,7 +210,7 @@ for i = 1:nExp
     
     % calculates the video frame rate and experiment apparatus indices
     FPS = snTot(i).sgP.fRate/snTot(i).sgP.sRate;
-    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
     
     % sets the relevant time points and apparatus indices for this expt
     if (cP.useAll)
@@ -300,12 +300,12 @@ for i = 1:nApp
             % calculates the duration of the stopped events
             tGrpStop = cellfun(@(x)(cellfun(@(y)(TT{j}(y(end)) - ...
                             TT{j}(y(1)-1)),x)),stopGrp,'un',0);            
-            kk = find(~cellfun(@isempty,tGrpStop));     
+            kk = find(~cellfun('isempty',tGrpStop));     
             
             % calculates the duration of the moved events
             tGrpMove = cellfun(@(x)(cellfun(@(y)(TT{j}(y(end)) - ...
                             TT{j}(y(1)-1)),x)),moveGrp,'un',0);                                  
-            jj = find(~cellfun(@isempty,tGrpMove));            
+            jj = find(~cellfun('isempty',tGrpMove));            
             
             % sets the region indices for each stop group
             [iIBI,iMBL,iAI] = deal(cell(size(stopGrp)));
@@ -594,7 +594,7 @@ if (~cP.useRegion)
     end    
 
     % resets the statistic fields (from multi-comp to comp)
-    isS = find(~cellfun(@isempty,field2cell(pData.oP.yVar,'Stats')));
+    isS = find(~cellfun('isempty',field2cell(pData.oP.yVar,'Stats')));
     for i = isS(:)'
         pData.oP.yVar(i).Stats = {'Comp'};
     end

@@ -174,11 +174,11 @@ for i = 1:nExp
     Ttot = cell2mat(snTot(i).T);
     flyok = snTot(i).iMov.flyok;
 
-    % determines the binned indices (for time length, tBin) and determines the
-    % bins which has at least two time points
+    % determines the binned indices (for time length, tBin) and determines 
+    % the bins which has at least two time points
     h.Update(1+wOfs,'Determining Time Bins',0.50);
     indB = detTimeBinIndices(Ttot,cP.tBin);
-    indB(cellfun(@length,indB) < cP.tBin/2) = {[]};
+    indB(cellfun('length',indB) < cP.tBin/2) = {[]};
     
     % calculates the sleep metrics
     for j = 1:nApp       
@@ -204,7 +204,7 @@ end
 % sets the values into the plot data struct
 for i = 1:nApp    
     % determines the non-empty arrays
-    ii = ~cellfun(@isempty,V(i,:));
+    ii = ~cellfun('isempty',V(i,:));
     
     % converts the total velocity array to a vector
     VT = combineNumericCells(cellfun(@(x)(cell2mat(x)),num2cell(...

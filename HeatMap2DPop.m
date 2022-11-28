@@ -168,7 +168,7 @@ for i = 1:nExp
     end
 
     % calculates the video frame rate and experiment apparatus indices
-    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));    
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));    
     
     % sets the relevant x/y-locations for the current experiment  
     [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp);

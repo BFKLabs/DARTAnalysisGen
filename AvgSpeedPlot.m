@@ -211,7 +211,7 @@ for j = 1:nApp
     end
     
     % removes any empty speed regions from the time array
-    if j == 1; isNE = ~cellfun(@isempty,V); end
+    if j == 1; isNE = ~cellfun('isempty',V); end
     plotD(j).Tf = T(isNE);
     
     % sets the raw velocity values            

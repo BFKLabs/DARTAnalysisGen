@@ -160,7 +160,7 @@ for i = 1:nExp
     end
     
     [Texp,sFac] = deal(cell2mat(snTot(i).T),snTot(i).sgP.sFac);
-    iApp = find(~cellfun(@isempty,snTot(i).iMov.flyok));
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
     
     for j = 1:length(iApp)
         % updates the waitbar figure

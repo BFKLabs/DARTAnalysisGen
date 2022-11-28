@@ -330,7 +330,7 @@ end
 % % ------------------------- %
 % 
 % % determines the maximum event count
-% nMax = max(arr2vec(cellfun(@(x)(max(cellfun(@length,x))),tS)));
+% nMax = max(arr2vec(cellfun(@(x)(max(cellfun('length',x))),tS)));
 % indES = arrayfun(@(x)(sprintf('Event #%i',x)),(1:nMax),'un',0);
 % 
 % % metric conversion
@@ -772,7 +772,7 @@ Y = max(0,repmat(prctile(Px,pTile,1),size(Px,1),1) - Px);
 function [tS,tE,vE,iE] = getEventProps(T,VT,jGrp,nFrm,tLim)
 
 % memory allocation
-nGrp = cellfun(@length,jGrp);
+nGrp = cellfun('length',jGrp);
 iE = cell(1,length(jGrp));
 
 if max(nGrp) == 0
@@ -784,7 +784,7 @@ else
 end
 
 % determines the event properties for each fly
-for i = find(~cellfun(@isempty,jGrp(:)')) 
+for i = find(~cellfun('isempty',jGrp(:)')) 
     % sets the indices of the event start points
     iS = cellfun(@(x)(x(1)),jGrp{i});
     T0 = T(iS);
@@ -814,7 +814,7 @@ vE = cellfun(@(x)(x(xiF)),vE,'un',0);
 % --- removes the empty cells from the array, Y
 function Y = reduceCellArray(Y)
 
-Y = arr2vec(Y(~cellfun(@isempty,Y)));
+Y = arr2vec(Y(~cellfun('isempty',Y)));
 
 % --- calculates the scaled signal from the base signal, Y0
 function Ys = scaleSig(Y0,yOfs)
