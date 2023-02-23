@@ -832,7 +832,7 @@ for i = 1:length(iPlotF)
     j = iPlotF(i);
     for k = 1:(1+cP.sepDN)
         [Tplt,Yplt] = deal(p.T/60,p.Y_fit{k}(:,j)+p.Y0_mn{k}(j));        
-        plot(Tplt,Yplt,'color',col{j},'linewidth',2,'linestyle',lStyle{k});            
+        plot(hAx,Tplt,Yplt,'color',col{j},'linewidth',2,'linestyle',lStyle{k});            
     end
 end
 

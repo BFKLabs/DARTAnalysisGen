@@ -336,7 +336,7 @@ for i = 1:nExp
         
         % appends the overall turn count to the total array
         ifok = snTot(i).iMov.flyok{iApp(j)};
-        plotD(iApp(j)).NT(1,ifok,i) = cellfun('length',iGrp,'un',0); 
+        plotD(iApp(j)).NT(1,ifok,i) = num2cell(cellfun('length',iGrp)); 
         plotD(iApp(j)).dDC(1,ifok,i) = num2cell(dDCnw);        
     end    
 end

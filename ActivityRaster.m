@@ -268,11 +268,7 @@ p = plotD{1}(ind);
 hP = getCurrentAxesProp('Parent');
 
 % retrieves the stimuli time stamps
-if isfield(snTot,'Ts')
-    Ts = cellfun(@(x)(cell2mat(x)/60),field2cell(snTot,'Ts'),'un',0);
-else
-    Ts = cell(size(snTot));
-end
+Ts = arrayfun(@(x)(getMotorFiringTimes(x.stimP)/60),snTot,'un',0);
 
 % converts the solution time arrays into single vectors
 if (cP.useAll)
@@ -316,7 +312,7 @@ yy = (pP.nHght+pP.nGap);
 
 % determines the frame index when the stimuli events took place
 ii = ~cellfun('isempty',Ts);
-if (any(ii))
+if any(ii)
     TsMn = groupStimTimes(cell2mat(Ts));
     TsMn = TsMn((TsMn - cP.T0) < cP.Tdur) - cP.T0;        
     iStim = cellfun(@(x)(argMin(abs(p(1).T-60*x))),num2cell(TsMn));
