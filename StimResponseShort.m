@@ -666,7 +666,7 @@ if (~pP.incMet)
     if (any(ii) && (nApp > 1))
         % sets the legend strings
         pF.Legend.String = cellfun(@(x,y)(sprintf('%s (N = %i)',x,y)),...
-                                lStr(ii),num2cell(p.Hist(ii))','un',0);
+                 arr2vec(lStr(ii)),arr2vec(num2cell(p.Hist(ii))),'un',0);
 
         % creates the new legend    
         hLg = createLegendObj(hPlot(ii),pF.Legend,1,0);

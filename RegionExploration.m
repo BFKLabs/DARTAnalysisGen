@@ -129,7 +129,7 @@ DL = [];
 % --------------------------------------- %
 
 % creates the waitbar figure
-wStr = {'Overall Progress','Apparatus Progress'};
+wStr = {'Overall Progress','Group Progress'};
 wStr = wStr(1:(1+(nExp > 1)));
 h = ProgBar(wStr,'Region Exploration Calculations');
 
@@ -154,11 +154,12 @@ for i = 1:nExp
     % determines which trace belongs to which sub-region. from this, scale
     % the data values
     nApp2 = length(iApp);
-    for j = 1:nApp2
+    for k = 1:nApp2
         % updates the waitbar figure
+        j = iApp(k);
         wStrNw = sprintf(...
-                      '%s (Apparatus %i of %i)',wStr{1+(nExp>1)},j,nApp2);
-        if h.Update(1+(nExp>1),wStrNw,j/nApp2)
+                      '%s (Group %i of %i)',wStr{1+(nExp>1)},k,nApp2);
+        if h.Update(1+(nExp>1),wStrNw,k/nApp2)
             [plotD,ok] = deal([],false);
             return
         end        
@@ -173,10 +174,10 @@ for i = 1:nExp
         
         % calculates the new exploration values and appends to the array
 %         ifok = 1:length(snTot(i).iMov.flyok{iApp(j)});
-        ifok = snTot(i).iMov.flyok{iApp(j)};
+        ifok = snTot(i).iMov.flyok{j};
         Enw = cellfun(@(x,y,z)...
                   (detFlyExploration(x,y,DL,z)),Px,Py,num2cell(R{j}(:)'));
-        plotD(iApp(j)).E(1,ifok,i) = num2cell(Enw);       
+        plotD(j).E(1,ifok,i) = num2cell(Enw);       
     end
 end
 
