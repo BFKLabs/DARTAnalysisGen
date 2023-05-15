@@ -10,6 +10,7 @@ pData.Name = 'Temporal Proportional Activity-Inactivity (Long)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 3 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -135,6 +136,42 @@ oP = addYVarField(oP,'Inactivity (Mean)','I_mn',[],4,{'T'},1);
 oP = addYVarField(oP,'Inactivity (SEM)','I_sem',[],4,{'T'},1);
 oP = addYVarField(oP,'Inactivity (Min)','I_min',[],4,{'T'},1);
 oP = addYVarField(oP,'Inactivity (Max)','I_max',[],4,{'T'},1);
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% global variables
+global tDay
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+cP = retParaStruct(dcObj.pData.cP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% sets the common class fields
+dcObj.xName = 'Time';
+dcObj.pType = 'Trace';
+dcObj.tUnits = 'Hours';
+dcObj.yName = cP.inactType;
+dcObj.combFig = sP.Sub.isComb;
+dcObj.tDay0 = [0,0,0,tDay,0,0];
+dcObj.grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the metric specific fields
+switch cP.inactType
+    case 'Hourly Sleep Duration'
+        % case is the hourly sleep duration
+        dcObj.yUnits = 'min/hour';
+        
+    case 'Inactivity Proportion'
+        % case is the inactivity proportion
+        dcObj.yUnits = '%';        
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %

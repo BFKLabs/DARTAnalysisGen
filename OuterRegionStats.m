@@ -10,6 +10,7 @@ pData.Name = 'Outer Region Statistics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 1 1 3];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -68,7 +69,8 @@ nPara = 5;
 pP = setParaFields(nPara);
 
 % sets the parameter list strings
-pList = {'Outer Edge Crossings','Outer Edge Percentage','Mean Radial Distance'};
+pList = {'Outer Edge Crossings','Outer Edge Percentage',...
+         'Mean Radial Distance'};
 pList2 = {'Boxplot','Bar Graph'};
 
 % parameter tab strings
@@ -110,7 +112,45 @@ oP = addYVarField(oP,'Outer Edge Proportion (SEM)','pOut_sem',[],Type2);
 oP = addYVarField(oP,'Mean Radial Distance','R',Stats,Type1,[],1);
 oP = addYVarField(oP,'Mean Radial Distance (Mean)','R_mn',[],Type2);
 oP = addYVarField(oP,'Mean Radial Distance (SEM)','R_sem',[],Type2);
-                         
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+pP = retParaStruct(dcObj.pData.pP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% other initialisations
+grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the common class fields
+dcObj.pType = pP.pType;
+dcObj.yName = pP.pMet;
+dcObj.grpName = grpName;
+[dcObj.useGrpHdr,dcObj.combFig] = deal(false);
+[dcObj.xName,dcObj.xGrp] = deal('Group Name',grpName);
+
+% sets up the axes specfic fields
+switch pP.pMet
+    case 'Outer Edge Crossings'
+        % case is the outer edge crossings
+        dcObj.yUnits = 'crossings';
+        
+    case 'Outer Edge Percentage'
+        % case is the outer edge percentage
+        dcObj.yUnits = '%';        
+        
+    case 'Mean Radial Distance'
+        % case is the mean radial distance
+        dcObj.yUnits = 'mm';        
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %

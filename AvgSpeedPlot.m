@@ -10,6 +10,7 @@ pData.Name = 'Population Movement (Full Experiment)';
 pData.Type = {'Pop'};
 pData.fType = [1 1 1 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if nargin == 1   
@@ -130,6 +131,30 @@ oP = addXVarField(oP,'Time','T','Time');
 % sets the dependent variable fields
 oP = addYVarField(oP,'Speed','V',[],5,{'T'},1);
 
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+sP = retParaStruct(dcObj.pData.sP);
+
+% sets the common class fields
+dcObj.yName = 'Average Speed';
+dcObj.xName = 'Time';
+dcObj.pType = 'Trace';
+dcObj.yUnits = 'mm/sec';
+dcObj.combFig = sP.Sub.isComb;
+dcObj.grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets up the time scale values
+Tend = dcObj.plotD{1}(1).T(end);
+[~,dcObj.tUnits] = getTimeScale(Tend);
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -138,12 +163,12 @@ oP = addYVarField(oP,'Speed','V',[],5,{'T'},1);
 function [plotD,ok] = calcFunc(snTot,pData,gPara,cP)
 
 % initialises the calculation parameters (if not already initialised)
-if (nargin == 3)
+if nargin == 3
     % retrieves the parameter struct
     cP = retParaStruct(pData.cP,gPara);
 
     % sets the movement type (based on the global parameters)
-    if (strcmp(gPara.movType,'Absolute Location'))
+    if strcmp(gPara.movType,'Absolute Location')
         cP.movType = 'Absolute Speed';
     end
 end
@@ -171,7 +196,8 @@ isOK = find(~isnan(indD));
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,'movType',cP.movType,...
-                            'Tf',[],'T',TD,'V',[],'V_mn',[],'V_sem',[]);                          
+                            'Tf',[],'T',TD,'V',[],'V_mn',[],'V_sem',[],...
+                            'TInfo',snTot.iExpt.Timing);
 
 % creates the waitbar figure
 wStr = {'Overall Progress'};
@@ -257,7 +283,7 @@ if isfield(cP,'chType'); chType = cP.chType; end
 
 % sets the plotting indices and subplot indices
 [ind,m,n] = deal(find(sP.Sub.isPlot),sP.Sub.nRow,sP.Sub.nCol);
-nApp = length(ind); if (nApp == 0); return; end
+nApp = length(ind); if nApp == 0; return; end
 p = plotD{1}(ind);
 
 % if the DN parameters are not, then set default values
@@ -310,7 +336,7 @@ if isempty(pF.xLabel.String)
             pF.xLabel.String = 'Zeitgeiber Time';
         else
             % case is not using Zeitgeiber time
-            if (pP.pltDN)
+            if pP.pltDN
                 % if plotting day/night, then set absolute time
                 pF.xLabel.String = 'Time'; 
             else
@@ -368,7 +394,7 @@ if pP.pltDN
         hAx = {plotDayNightGraph(hP,snTot,p(1).Tf*tMlt,ceil(yLim+yOfs),1,[m,n],tMlt)};
     else
         hAx = plotDayNightGraph(hP,snTot,p(1).Tf*tMlt,ceil(yLim+yOfs),ind,[m,n],tMlt);
-        if ((m*n) == 1); hAx = {hAx}; end
+        if (m*n) == 1; hAx = {hAx}; end
     end
 else
     if sP.Sub.isComb
@@ -390,7 +416,7 @@ for j = 1:nApp
     if sP.Sub.isComb
         % case is combining, so use the main axis
         [colNw,k] = deal(col{j},1);
-        if (j == 1); axis(hAx{k},'on'); end
+        if j == 1; axis(hAx{k},'on'); end
     else
         % otherwise, create a seperate subplot
         [colNw,k] = deal(col{1},j);
@@ -398,24 +424,19 @@ for j = 1:nApp
     
     % turns the axis box on  
     hold(hAx{k},'on');
-    set(hAx{k},'linewidth',1.5,'box','on','UserData',j)
+    set(hAx{k},'linewidth',1.5,'box','on')
 
     % plots the SEM error signal (if required)
     if pP.pltErr 
         set(gcf,'CurrentAxes',hAx{k})
         plotSignalSEM(p(j).V_mn+yOfs,p(j).V_sem,p(j).Tf*tMlt,colNw,0.5)     
-    end
-        
-    % plots the traces (time scaled to hours)  
-    hPlotNw = plotFullSignal(hAx{k},p(j).Tf*tMlt,p(j).V_mn+yOfs);
-    set(hPlotNw,'color',colNw,'linewidth',pP.lWid);    
-    if sP.Sub.isComb; hPlot{j} = hPlotNw; end          
+    end        
         
     % plots the stimulus markers
-    if (i == 1) || (~sP.Sub.isComb)
+    if (i == 1) || ~sP.Sub.isComb
         if pP.showStim && exist('Tstim','var')
-            plot(hAx{k},Tstim*tMlt,Ystim+yOfs,...
-                        'k:','linewidth',pP.lWid,'tag','hStim'); 
+            plot(hAx{k},Tstim*tMlt,Ystim+yOfs,'k:','linewidth',...
+                pP.lWid,'tag','hStim','HitTest','off'); 
         end    
 
         % sets the time axis properties
@@ -436,21 +457,27 @@ for j = 1:nApp
         end     
 
         % formats the plot axis
-        formatPlotAxis(hAx{k},pF,i);  
+        formatPlotAxis(hAx{k},pF,i); 
+        set(hAx{k},'UserData',k);
         axis(hAx{k},'on')
     end
+    
+    % plots the traces (time scaled to hours)  
+    hPlotNw = plotFullSignal(hAx{k},p(j).Tf*tMlt,p(j).V_mn+yOfs);
+    set(hPlotNw,'color',colNw,'linewidth',pP.lWid,'UserData',j);    
+    if sP.Sub.isComb; hPlot{j} = hPlotNw; end              
 end
 
 % --- PLOT AXES REFORMATTING --- %
 % ------------------------------ %
 
 % sets the non-aligned x/y labels
-if (~sP.Sub.isComb)
+if ~sP.Sub.isComb
     formatMultiXYLabels(hAx,pF,[m,n]);
 end
 
 % updates the figure if plotting a combined figure
-if (sP.Sub.isComb)
+if sP.Sub.isComb
     % creates the legend object
     [hLg,yLimMx] = deal(createLegendObj(hPlot,pF.Legend),yLim);           
 else
@@ -461,14 +488,14 @@ end
 
 %
 yLimMx = cellfun(@(x)(setStandardYAxis(x,[],5,yLimMx,0)),hAx);
-for i = 1:length(hAx)    
+for i = 1:length(hAx)
     % resets the stimuli markers
     if pP.showStim
         set(findall(hAx{i},'tag','hStim'),'yData',[0 yLimMx(1)]);
     end
     
     % resets the day/night background (if plotted)
-    if (pP.pltDN)
+    if pP.pltDN
         hDN = findall(hAx{i},'tag','hDN');
         yData = get(hDN(1),'yData');
         yData(yData>mean(yData)) = yLimMx(i);
@@ -480,7 +507,7 @@ end
 resetAxesPos(hAx,m,n); 
 
 % resets the legend location
-if (sP.Sub.isComb)
+if sP.Sub.isComb
     resetLegendAxisPos(hAx{1},hLg,[1 1],-0.005)
 end
 

@@ -10,6 +10,7 @@ pData.Name = 'Temporal Activity Proportion';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 2 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -125,7 +126,45 @@ oP = addYVarField(oP,'Activity','Y',[],Type1,{'TT'},1);
 oP = addYVarField(oP,'Activity (Mean)','Y_mn',[],Type2,xDep);
 oP = addYVarField(oP,'Activity (SEM)','Y_sem',[],Type2,xDep);
 oP = addYVarField(oP,'Activity (SD)','Y_sd',[],Type2,xDep);
-                         
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+cP = retParaStruct(dcObj.pData.cP);
+pP = retParaStruct(dcObj.pData.pP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% sets the common class fields
+dcObj.xName = 'Time';
+dcObj.xUnits = 'min';
+dcObj.yUnits = '%';
+dcObj.yName = pP.pMet;
+dcObj.useGrpHdr = true;
+dcObj.combFig = sP.Sub.isComb;
+dcObj.grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets up the class fields based on the representation type
+if strcmp(pP.repType,'Population')
+    % case is the population signals
+    dcObj.pType = 'Trace';
+    
+else
+    % case is the individual signals
+    if dcObj.combFig
+        dcObj.useGrpHdr = false;        
+        dcObj.pType = 'Multi-Individual Trace';
+    else
+        dcObj.pType = 'Individual Trace';
+    end
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -299,12 +338,12 @@ hP = getCurrentAxesProp('Parent');
 % ---------------------------------------- %
 
 % sets the subplot titles
-if (sP.Sub.isComb)% || (all([m n] == 1))
+if sP.Sub.isComb% || (all([m n] == 1))
     % case is combining, so remove the titles
     pF.Legend.String = snTot(1).iMov.pInfo.gName;
     for i = 1:length(pF.Title); pF.Title(i).String = ''; end
     
-elseif (all(cellfun('isempty',field2cell(pF.Title,'String'))))
+elseif all(cellfun('isempty',field2cell(pF.Title,'String')))
     % titles are empty, so reset them to the apparatus names
     for i = 1:length(pF.Title) 
         pF.Title(i).String = snTot(1).iMov.pInfo.gName{i}; 
@@ -347,10 +386,10 @@ col = num2cell(distinguishable_colors(nApp,'w'),2);
 % loops through all the subplots 
 for j = 1:nApp
     % sets the subplot to be plotted on and updates the properties    
-    if (sP.Sub.isComb) || (all([m n] == 1))
+    if sP.Sub.isComb || (all([m n] == 1))
         % case is combining, so use the main axis
         colNw = col{j};
-        if (j == 1)
+        if j == 1
             [hAx{j},hAxNw] = deal(createSubPlotAxes(hP)); hold on  
             axis(hAxNw,'on')
         end
@@ -362,7 +401,7 @@ for j = 1:nApp
 
     % sets the plot signals    
     if strcmp(pP.repType,'Population')
-        if (pP.isSmooth)
+        if pP.isSmooth
             % data is smoothed
             Yplt = smooth(p(j).Y_mn*100,pP.nSmooth);
         else
@@ -370,11 +409,11 @@ for j = 1:nApp
             Yplt = p(j).Y_mn*100;
         end
 
-        if (strcmp(pP.pMet,'Inactivity')); Yplt = 100 - Yplt; end
+        if strcmp(pP.pMet,'Inactivity'); Yplt = 100 - Yplt; end
         set(hAxNw,'linewidth',1.5,'box','on','UserData',j)
 
         % plots the SEM filled regions (if set)
-        if (pP.plotErr)
+        if pP.plotErr
             if strcmp(pP.errType,'Standard Error Mean')
                 plotSignalSEM(Yplt,p(j).Y_sem*100,p(j).Tbin,colNw)        
             else
@@ -383,15 +422,25 @@ for j = 1:nApp
         end
 
         % plots the traces     
-        hPlot{j} = plot(hAxNw,p(j).Tbin,Yplt,'color',colNw,'linewidth',pP.lWid);
+        hPlot{j} = plot(hAxNw,p(j).Tbin,Yplt,'color',colNw,...
+            'linewidth',pP.lWid,'UserData',j);
     else
         %
         Y0 = cellfun(@(x)(x.*(~isinf(x))),p(j).Y,'un',0); 
         Y1 = {reshape(Y0,[1 1 numel(Y0)])}; 
         Y2 = cellfun(@(x)(combineNumericCells3(x(~cellfun('isempty',x)))),Y1,'un',0); 
         
-        %
-        hPlot{j} = plot(hAxNw,p(j).Tbin,100*squeeze(Y2{1}),'linewidth',pP.lWid);
+        % creates the individual plots
+        Yplt = 100*squeeze(Y2{1});
+        hPlot{j} = plot(hAxNw,p(j).Tbin,Yplt,'linewidth',pP.lWid);
+        iPlt = arr2vec(1:length(hPlot{j}));
+        
+        if sP.Sub.isComb            
+            arrayfun(@(h,i)(set...
+                (h,'UserData',[j,i],'Color',col{j})),hPlot{j},iPlt);
+        else
+            arrayfun(@(h,i)(set(h,'UserData',i)),hPlot{j},iPlt);            
+        end
     end
 
     % sets the x/y axis limits
@@ -413,12 +462,17 @@ else
 end
 
 % updates the figure if plotting a combined figure
-if (sP.Sub.isComb)
+if sP.Sub.isComb
     % resets the axis positions
     resetAxesPos(hAx,m,n,[0.02 0.02]);         
     
     % creates the legend object
-    hLg = createLegendObj(hPlot,pF.Legend);
+    if sP.Sub.isComb && strcmp(pP.repType,'Individual')
+        hPlotLg = cellfun(@(x)(x(1)),hPlot,'un',0);
+        hLg = createLegendObj(hPlotLg,pF.Legend);
+    else
+        hLg = createLegendObj(hPlot,pF.Legend);
+    end
     
     % resets the legend position           
     pLg = get(hLg,'position');

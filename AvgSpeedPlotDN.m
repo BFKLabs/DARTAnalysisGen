@@ -10,6 +10,7 @@ pData.Name = 'Population Movement (Long)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 3 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -117,6 +118,31 @@ oP = addYVarField(oP,'Speed (Mean)','V_mn',[],4,{'T'},1);
 oP = addYVarField(oP,'Speed (SEM)','V_sem',[],4,{'T'},1);
 oP = addYVarField(oP,'Speed (Min)','V_min',[],4,{'T'},1);
 oP = addYVarField(oP,'Speed (Max)','V_max',[],4,{'T'},1);
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% global variables
+global tDay
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+sP = retParaStruct(dcObj.pData.sP);
+
+% sets the common class fields
+dcObj.yName = 'Average Speed';
+dcObj.xName = 'Time';
+dcObj.pType = 'Trace';
+dcObj.tUnits = 'Hours';
+dcObj.yUnits = 'mm/sec';
+dcObj.combFig = sP.Sub.isComb;
+dcObj.tDay0 = [0,0,0,tDay,0,0];
+dcObj.grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
@@ -303,7 +329,7 @@ end
 
 % resets the y-label string (if using mid-line crossings)
 if isempty(pF.yLabel.String)
-    if (strcmp(movType,'Midline Crossing'))
+    if strcmp(movType,'Midline Crossing')
         pF.yLabel.String = sprintf('Beam Crosses (count min^{-1})');
     else
         pF.yLabel.String = sprintf('Speed (mm sec^{-1})');
@@ -311,7 +337,7 @@ if isempty(pF.yLabel.String)
 end
     
 % sets the time axis properties
-if (isempty(pF.xLabel.String))
+if isempty(pF.xLabel.String)
     % case is using the absolute time axis
     if (pP.isZeitG)            
         % case is using Zeitgeiber time
@@ -323,8 +349,8 @@ if (isempty(pF.xLabel.String))
 end
 
 % determines if the signals can/are aligned
-if (isfield(cP,'isAlign'))
-    if (cP.isAlign)
+if isfield(cP,'isAlign')
+    if cP.isAlign
         % if the signals are aligned, then remove the other flags
         isAlign = true;
         [pP.pltDN,pP.isZeitG,absTime] = deal(false);   
@@ -332,7 +358,7 @@ if (isfield(cP,'isAlign'))
         % determines if experiment is very short (< 2 hours). if so, then
         % user minutes as a time scale (instead of hours)
         Tf = ceil(cellfun(@(x)(x{end}(end)),field2cell(snTot,'T')));
-        if (max(convertTime(Tf,'sec','hours') < 2))
+        if max(convertTime(Tf,'sec','hours') < 2)
             tMlt = convertTime(1,'sec','mins');     
             pF.xLabel.String = 'Time (min)'; 
         end
@@ -343,7 +369,7 @@ end
 pData.pF = pF;
 
 % retrieves the formatting struct
-if (isempty(m)); szMx = 1; else; szMx = max([m n]); end
+if isempty(m); szMx = 1; else; szMx = max([m n]); end
 pF = retFormatStruct(pF,szMx);
 
 % ----------------------- %
@@ -352,9 +378,9 @@ pF = retFormatStruct(pF,szMx);
 
 % memory allocation
 hPlot = cell(nApp,1);
-if (pP.pltErr)
+if pP.pltErr
     % calculates the overall limit (mean + error)
-    switch (pP.errType)
+    switch pP.errType
         case ('SEM') % error type is SEM
             yLim = detOverallLimit(cellfun(@(x)(max(cell2mat(...
                 field2cell(x,'V_mn'))+cell2mat(field2cell(x,'V_sem')))),plotD));
@@ -364,7 +390,7 @@ if (pP.pltErr)
     end
     
     % if not SEM, then calculate maximum from the mean
-    if (isnan(yLim))
+    if isnan(yLim)
         yLim = max(cellfun(@(x)(detOverallLimit(field2cell(x,'V_mn'))),plotD));    
     end
 else
@@ -382,7 +408,7 @@ for j = 1:nApp
     i = ind(j);
 
     % sets the subplot to be plotted on and updates the properties
-    if (sP.Sub.isComb)
+    if sP.Sub.isComb
         % case is combining, so use the main axis
         colNw = col{j};
         if (j == 1)
@@ -391,7 +417,7 @@ for j = 1:nApp
         end
 
         % adds the day/night (if not aligned)
-        if (~isAlign) && (j == 1); plotSingleDNGraph(yLim,p(j)); end        
+        if ~isAlign && (j == 1); plotSingleDNGraph(yLim,p(j)); end        
     else
         % otherwise, create a seperate subplot
         colNw = col{1};
@@ -399,7 +425,7 @@ for j = 1:nApp
         hold(hAx{j},'on');
         
         % adds the day/night (if not aligned)
-        if (~isAlign); plotSingleDNGraph(yLim,p(j)); end           
+        if ~isAlign; plotSingleDNGraph(yLim,p(j)); end           
     end
     
     % turns the axis box on
@@ -407,8 +433,8 @@ for j = 1:nApp
 
     % if there is an overlap, then plot the SEM traces
     Tplt = (p(j).T-p(j).T(1))*tMlt + convertTime(tBin/2,'sec','hrs');
-    if (pP.pltErr)
-        switch (pP.errType)
+    if pP.pltErr
+        switch pP.errType
             case ('SEM')
                 % sets the error signal and y-axis limit                    
                 Yerr = p(j).V_sem;
@@ -421,12 +447,13 @@ for j = 1:nApp
         plotSignalSEM(p(j).V_mn,Yerr,Tplt,colNw,0.5)             
     end
 
-    % plots the traces (time scaled to hours   
-    hPlotNw = plot(hAxNw,Tplt,p(j).V_mn,'color',colNw,'linewidth',pP.lWid);
-    if (sP.Sub.isComb); hPlot{j} = hPlotNw; end   
+    % plots the traces
+    hPlotNw = plot(hAxNw,Tplt,p(j).V_mn,'color',colNw,...
+        'linewidth',pP.lWid,'UserData',j);
+    if sP.Sub.isComb; hPlot{j} = hPlotNw; end   
 
     % turns the grid on/off depending on the flag values
-    if (pP.plotGrid)
+    if pP.plotGrid
         % grid is turned on
         grid on
     else
@@ -435,11 +462,11 @@ for j = 1:nApp
     end           
     
     % sets the x/y axis limits         
-    if (isAlign)
+    if isAlign
         Tf = ceil(cellfun(@(x)(x{end}(end)),field2cell(snTot,'T')));
         set(hAxNw,'xlim',[0 max(Tf)*tMlt]+0.05*[-1 1]);
     else
-        if (~isnan(yLim))
+        if ~isnan(yLim)
             set(hAxNw,'xlim',sP.xLim*tMlt,'ylim',[0 yLim])        
         else
             set(hAxNw,'xlim',sP.xLim*tMlt)                        
@@ -448,12 +475,12 @@ for j = 1:nApp
     
     % case is using the absolute time axis
     Tax = convertTime([0 24],'hrs','sec');
-    if (pP.isZeitG)            
+    if pP.isZeitG
         % case is using Zeitgeiber time
         setZeitGTimeAxis(hAxNw,Tax);        
     else
         % if plotting day/night, then set absolute time
-        if (absTime)
+        if absTime
             setAbsTimeAxis(hAxNw,Tax);  
         end
     end       
@@ -467,7 +494,7 @@ end
 % ------------------------------ %
 
 % sets the non-aligned x/y labels
-if (~sP.Sub.isComb)
+if ~sP.Sub.isComb
     formatMultiXYLabels(hAx,pF,[m,n]);
 end
 
@@ -475,7 +502,7 @@ end
 resetAxesPos(hAx,m,n); 
 
 % updates the figure if plotting a combined figure
-if (sP.Sub.isComb)
+if sP.Sub.isComb
     % creates the legend object
     hLg = createLegendObj(hPlot,pF.Legend);
 
@@ -493,7 +520,7 @@ else
 end
 
 % if there is a warning string, then show it to screen
-if (~isempty(wStr))
+if ~isempty(wStr)
     waitfor(warndlg(wStr))
 end
 

@@ -10,6 +10,7 @@ pData.Name = 'Stimuli Response (Long)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 3 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -222,6 +223,52 @@ oP = addYVarField(oP,'Inact Tau 2 (Mean)','kI2_mn',[],Type2,xDep2);
 oP = addYVarField(oP,'Inact Tau 2 (SEM)','kI2_sem',[],Type2,xDep2);
 oP = addYVarField(oP,'Max Response Time','Tmax',[],Type2,xDep2);
 oP = addYVarField(oP,'Signal GOF','gof',Stats2,[],xDep2);
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the parameter struct
+cP = retParaStruct(dcObj.pData.cP);
+
+% field retrievals
+Tgrp = dcObj.plotD{1}(1).Tgrp;
+iAx = dcObj.getSelectAxesIndex;
+uStr = {'mm/sec','R^2','mm/sec','mm/sec','min','min','min'};
+mStr = {'Speed','GOF','Amplitude','Pre-Stimuli Speed',...
+        'Response Time','Activation TC','Inactivation TC'};
+
+% incorporates the fields for the double-exponential field
+if cP.useDouble
+    mStr{end} = 'Fast Inactivation TC';
+    [uStr{end+1},mStr{end+1}] = deal('min','Slow Inactivation TC');
+end
+    
+% sets the common class fields
+dcObj.xGrp = Tgrp;
+dcObj.yName = mStr{iAx};
+dcObj.yUnits = uStr{iAx};
+dcObj.combFig = false;
+dcObj.grpName = dcObj.pData.appName;
+
+% sets up the axes specfic fields
+if iAx == 1
+    % case is the speed traces
+    dcObj.pType = 'Fitted Trace';  
+    dcObj.xName = 'Time';
+    dcObj.xUnits = 'sec';
+    
+else
+    % case is the metric bar graphs
+    dcObj.pType = 'Bar Graph';
+    dcObj.xName = 'Time Bin';
+    
+end    
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
@@ -504,7 +551,7 @@ pF = pData.pF;
 
 % sets the indices to be plotted
 [iPlotT,iPlotF] = deal(find(sP.pT),find(sP.pF));
-if (isempty(iPlotT) && isempty(iPlotF)); return; end
+if isempty(iPlotT) && isempty(iPlotF); return; end
 
 % sets the number of groups and the parameter struct
 p = plotD{1}(sP.pInd);
@@ -512,7 +559,7 @@ p = plotD{1}(sP.pInd);
 % if the current data set is empty, then exit the loop
 aok = any(cell2mat(cellfun(@(x)(field2cell(...
                 field2cell(x,'iMov',1),'ok')),num2cell(snTot))'),2);
-if (~aok(sP.pInd)); return; end
+if ~aok(sP.pInd); return; end
 
 % retrieves the panel object handle
 hP = getCurrentAxesProp('Parent');
@@ -548,8 +595,8 @@ if grpDay
             pF.Title(1).String = sprintf('All Days - %s',p.Tgrp0{jPlot});
             
             % resets the plotting indices
-            if (~isempty(iPlotT)); iPlotT = 1:size(p.Y,2); end
-            if (~isempty(iPlotF)); iPlotF = 1:size(p.Y,2); end              
+            if ~isempty(iPlotT); iPlotT = 1:size(p.Y,2); end
+            if ~isempty(iPlotF); iPlotF = 1:size(p.Y,2); end              
         end
     else                
         % otherwise reset the plotting data struct for the selected day
@@ -591,14 +638,14 @@ useDouble = ~all(isnan(p.kI2_mn(:)));
 
 % sets the main plot ylabel string and offset amount
 pF.yLabel(1).String = 'Speed (mm s^{-1})';
-if (pP.relSpeed)
+if pP.relSpeed
     yOfs = zeros(1,nGrp);    
 else
     yOfs = p.Y0_mn;
 end
 
 % sets the main plot ylabel string and offset amount
-if (useDouble)
+if useDouble
     pF.Title(7).String = '\tau_{Fast}';
 end
 
@@ -614,12 +661,14 @@ pF.Title(1).String = sprintf('%s (%s)',pF.Title(1).String,grpName);
 [nSub,pY,pLim] = deal(6 + useDouble,0.05,0.05*[-1 1]);
 
 % creates the main axes
-if (pP.incMet)
+if pP.incMet
     % creates the sub-plot axes
     hAxIns = cell(nSub,1);
     for i = 1:nSub    
-        hAxIns{i} = axes('parent',hP,'OuterPosition',calcOuterPos(2,nSub,i+nSub),...
-                         'Units','Normalized','linewidth',1.5,'UserData',i);
+        pPos = calcOuterPos(2,nSub,i+nSub);
+        hAxIns{i} = axes('parent',hP,'OuterPosition',pPos,...
+                         'Units','Normalized','linewidth',1.5,...
+                         'UserData',i+1);
     end
 end
 
@@ -634,15 +683,16 @@ end
 % ------------------------------- %
 
 % resets the axis position (to shrink if for the axis labels)
-if (pP.incMet)
+if pP.incMet
     oPos = calcOuterPos(2,1,1);
 else
     oPos = calcOuterPos(1,1,1);
 end
 
 % turns the hold on
-hAx = axes('OuterPosition',oPos,'parent',hP); 
-hold(hAx,'on'); axis(hAx,'on')
+hAx = axes('OuterPosition',oPos,'parent',hP,'UserData',1); 
+hold(hAx,'on'); 
+axis(hAx,'on')
     
 % determines the traces/fitted exponentials that are to be plotted
 col = getBarColourScheme(nGrp,colErr);
@@ -655,7 +705,7 @@ for i = 1:length(iPlotT)
     [Tplt,Yplt] = deal(p.T/60,p.Y_rel(:,j)+yOfs(j));
     
     % adds the error bar trace (if selected)
-    if (pP.plotErr)
+    if pP.plotErr
         plotSignalSEM(Yplt,p.Y_sem(:,j),Tplt,col{j})        
         yMin = min(yMin,min(Yplt-p.Y_sem(:,j)));
         yMax = max(yMax,max(Yplt+p.Y_sem(:,j)));
@@ -664,15 +714,16 @@ for i = 1:length(iPlotT)
     end    
     
     % creates the plot
-    hPlot{j} = plot(Tplt,Yplt,'color',col{j});    
+    hPlot{j} = plot(Tplt,Yplt,'color',col{j},'UserData',i,'Tag','hRaw');    
 end
 
 % plots the exponential traces
 for i = 1:length(iPlotF)
     j = iPlotF(i);
     Yplt = p.Y_fit(:,j)+yOfs(j);
-    hPlot{j} = plot(p.T/60,Yplt,'color',col{j},'linewidth',2);
-    if (pP.relSpeed)
+    hPlot{j} = plot(p.T/60,Yplt,'color',col{j},...
+        'linewidth',2,'UserData',i,'Tag','hFit');
+    if pP.relSpeed
         [yMin,yMax] = deal(min(yMin,min(Yplt)),max(yMax,max(Yplt)));        
     else
         [yMin,yMax] = deal(max(0,min(Yplt)),max(yMax,max(Yplt)));        
@@ -681,8 +732,8 @@ end
 
 % formats the plot axis
 delY = (yMax-yMin);
-if (abs(delY) < 1e6)
-    if (pP.relSpeed)
+if abs(delY) < 1e6
+    if pP.relSpeed
         set(hAx,'ylim',[roundP(yMin-pY*delY,0.1) roundP(yMax+pY*delY,0.1)]+pLim)
     else
         set(hAx,'ylim',[0 roundP(yMax+pY*delY,0.1)+pLim(2)])
@@ -691,24 +742,24 @@ end
 
 % plots the gridlines (if required)
 formatPlotAxis(hAx,pF,1);
-if (pP.plotGridT)
+if pP.plotGridT
     grid(hAx,'on')
 end
 
 % sets the axis properties (based on the plot type)
 xLim = roundP(p.T([1 end])/60);
 set(hAx,'xlim',xLim,'linewidth',1.5,'box','on'); 
-if (pP.relSpeed); plot(hAx,xLim,[0 0],'r--','linewidth',1.5); end  
+if pP.relSpeed; plot(hAx,xLim,[0 0],'r--','linewidth',1.5); end  
 
 % retrieves the panel object handle
 yLim = getCurrentAxesProp('ylim');
 plot(hAx,[0 0],yLim,'r--','linewidth',1.5)
 
 % if not plotting the metrics, then exit the function
-if (~pP.incMet)                           
+if ~pP.incMet                      
     % creates the legend object using the formatting data struct    
     ii = ~cellfun('isempty',hPlot);
-    if (any(ii) && (nGrp > 1))
+    if any(ii) && (nGrp > 1)
         % creates the legend
         pF.Legend.String = cellfun(@(x,y)(sprintf('%s (N = %i)',x,y)),...
                         lStr(ii),num2cell(p.Hist(ii)),'un',0);
@@ -753,10 +804,10 @@ end
 pAx(1) = pAx(3)*(xLim(1)-pLbl(1))/diff(xLim);
 
 % plots the inset metrics (if selected)
-if (pP.incMet)
+if pP.incMet
     % sets the parameter strings
     pStr = {'gof','Yamp_mn','Y0_mn','Tmax','kA','kI1','kI2'};
-    if (pP.plotRaw); pStr{2} = 'YampR_mn'; end
+    if pP.plotRaw; pStr{2} = 'YampR_mn'; end
     pStr = pStr(1:nSub);    
     
     % sets the axis properties for each of the inset plots
@@ -766,7 +817,7 @@ if (pP.incMet)
         
         % retrieves the stimuli response values
         [Ynw,YSEM,YmxNw] = getSRValues(p,pD,pP,pStr{i});        
-        if (~isnan(YmxNw)); Ymx(i) = YmxNw; end
+        if ~isnan(YmxNw); Ymx(i) = YmxNw; end
         
         % creates the bars for each of the plot values
         for j = 1:nGrp
@@ -778,12 +829,12 @@ if (pP.incMet)
                       'xlim',[1 nGrp] + 0.5*[-1 1],'Box','on')        
 
         % sets the axis limits
-        if (strcmp(pStr{i},'gof'))
+        if strcmp(pStr{i},'gof')
             set(hAxIns{i},'ylim',[0 1])        
         else            
-            if (pP.plotFixedM)
+            if pP.plotFixedM
                 resetYAxisScale(hAxIns{i},Ynw(:),YmxNw);  
-            elseif (isempty(YSEM))
+            elseif isempty(YSEM)
                 resetYAxisScale(hAxIns{i},Ynw(:));
             else
                 resetYAxisScale(hAxIns{i},Ynw(:)+YSEM(:));
@@ -791,18 +842,19 @@ if (pP.incMet)
         end
         
         % formats the plot axis
+        set(gcf,'CurrentAxes',hAxIns{i});
         pF.xLabel(i+1).String = pF.Axis(i+1).String;
         formatPlotAxis(hAxIns{i},pF,1+i);      
         set(hAxIns{i},'xtick',nGrp/2+0.5)
         plot(hAxIns{i},get(hAxIns{i},'xlim'),[0 0],'k','linewidth',2)
         
         % if there is a SEM signal to add, then add it...
-        if (~isempty(YSEM))
+        if ~isempty(YSEM)
             addBarError(hAxIns{i},1:nGrp,Ynw,YSEM,colErr,2);
         end        
         
         % turns the grid on (if specified)
-        if (pP.plotGrid)
+        if pP.plotGrid
             set(hAxIns{i},'ygrid','on')
         end
     end
@@ -850,11 +902,11 @@ end
 set(hAx,'position',pAx)
 
 % formats the plot axis to the fitted response
-if (any(sP.pT) || any(sP.pF))    
+if any(sP.pT) || any(sP.pF) 
     % sets the axis properties (based on the plot type) 
-    if (pP.plotFixedS)
+    if pP.plotFixedS
         [Y,Ysem,Y0_mn] = field2cell(plotD{1},{'Y','Y_sem','Y0_mn'});
-        if (~pP.relSpeed)
+        if ~pP.relSpeed
             Y = cellfun(@(xx,yy)(cellfun(@(x,y)(x+repmat...
                         (y,size(x,1),1)),xx,yy,'un',0)),Y,Y0_mn,'un',0);
         end
@@ -870,17 +922,17 @@ if (any(sP.pT) || any(sP.pF))
     end
 
     % plots the stimuli marker line
-    if (pP.plotErr)        
-        plot(hAx,[0 0],yLim,'r--','linewidth',1.5)        
+    if pP.plotErr     
+        plot(hAx,[0 0],yLim,'r--','linewidth',1.5,'HitTest','off')        
         set(hAx,'linewidth',1.5,'ylim',yLim)
     else
-        plot(hAx,[0 0],get(hAx,'ylim'),'r--','linewidth',2)
+        plot(hAx,[0 0],get(hAx,'ylim'),'r--','linewidth',2,'HitTest','off')
     end
     
     % plots a line for zero speed (relative speed only)
     if pP.relSpeed
         xLim = getCurrentAxesProp('xlim');
-        plot(hAx,xLim,[0 0],'r--','linewidth',1.5)
+        plot(hAx,xLim,[0 0],'r--','linewidth',1.5,'HitTest','off')
     end
 end
 

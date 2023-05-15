@@ -10,6 +10,7 @@ pData.Name = 'Aggregate Activity Proportion';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 2 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -76,7 +77,7 @@ pP = setParaFields(nPara);
 % sets the parameter list strings
 
 % sets the parameter lists
-pList = {'Activity/Inactivity Percentage','Active/Inactive Minutes',...
+pList = {'Activity/Inactivity Percentage','Active/Inactive Duration',...
           'Average/Active Speed','Displacement'};
 pList2 = {'Both Metrics','First Metric','Second Metric'};
 pList3 = {'Boxplot','Bar Graph'};
@@ -85,11 +86,11 @@ pList3 = {'Boxplot','Bar Graph'};
 a = {'1 - General','2 - Plot Metrics'};
 
 % sets the parameter fields
-pP(1) = setParaFields(a{1},'List',{1,pList2},'pDisp','Plot Metric');
+pP(1) = setParaFields(a{1},'List',{1,pList2},'pDisp','Plot Metric',[],{3,1:3});
 pP(2) = setParaFields(a{1},'List',{1,pList3},'pType','Display Metric',[],{1,[1 2 3]});
 pP(3) = setParaFields(a{2},'List',{1,pList},'pMet','Plot Type');
 pP(4) = setParaFields(a{2},'Number',0.8,'pW','Bar Graph Relative Width',[0 1 false],{3,1});
-pP(5) = setParaFields(a{2},'Boolean',1,'grpTime','Group Metrics By Type');
+pP(5) = setParaFields(a{2},'Boolean',0,'grpType','Group Metrics By Type',[],{1,1});
 pP(6) = setParaFields(a{1},'Boolean',1,'plotGrid','Show Axis Gridlines');
 pP(7) = setParaFields(a{1},'Boolean',1,'plotErr','Show Error Bars/Outliers');
 
@@ -155,6 +156,70 @@ oP = addYVarField(oP,'Displacement (SEM)','D_sem',[],Type2);
 oP = addYVarField(oP,'Displacement (Median)','D_md',[],Type2);
 oP = addYVarField(oP,'Displacement (Lower Quartile)','D_lq',[],Type2);
 oP = addYVarField(oP,'Displacement (Upper Quartile)','D_uq',[],Type2);
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+pP = retParaStruct(dcObj.pData.pP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% other initialisations
+grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the common class fields
+dcObj.yName = pP.pMet;
+dcObj.pType = pP.pType;
+[dcObj.useGrpHdr,dcObj.combFig] = deal(false);
+[dcObj.xName,dcObj.xGrp] = deal('Group Name',grpName);
+
+% sets up the metric specfic fields
+if strcmp(pP.pMet,'Displacement')
+    % case is displacement is being displayed
+    dcObj.yUnits = 'm';    
+    
+else    
+    % case is the other metrics
+    switch pP.pMet
+        case 'Activity/Inactivity Percentage'
+            % case is the activity/inactivity percentage
+            sType = {'Active','Inactive'};
+            
+        case 'Active/Inactive Duration'
+            % case is the active/inactive duration
+            sType = {'Active Time','Inactive Time'};
+            
+        case 'Average/Active Speed'
+            % case is the average/active speeds
+            sType = {'Average Speed','Active Speed'};
+            
+    end
+    
+    % sets the display type specific fields
+    switch pP.pDisp
+        case 'Both Metrics'
+            % case is both metrics are being displayed
+            dcObj.pType = sprintf('Multi-%s',pP.pType);
+            
+            if pP.grpType
+                [dcObj.xName,dcObj.xGrp] = deal('Activity Type',sType);
+                [dcObj.xName2,dcObj.xGrp2] = deal('Group Name',grpName);
+            else
+                [dcObj.xGrp2,dcObj.xName2] = deal(sType,'Activity Type');
+            end
+            
+        otherwise
+            % case is displaying the first metric
+            [dcObj.xGrp2,dcObj.xName2] = deal([]);
+    end
+    
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
@@ -328,53 +393,67 @@ StrT = snTot(1).iMov.pInfo.gName(ind);
 hAx = createSubPlotAxes(hP); 
 hold(hAx,'on')
 
-% sets the plot values for the 
-switch (pP.pMet)
-    case ('Activity/Inactivity Percentage')       
+% sets the plot values (based on the plot metric)
+switch pP.pMet
+    case ('Activity/Inactivity Percentage') 
+        % case is activity/inactivity percentage
         [yLim,StrM] = deal([0 100],{'Active','Inactive'});
         [pStr,pF.yLabel(1).String] = deal({'A','I'},'Percentage of Time');
         [tStrP,tStrS] = deal({'Activity','Inactivity'},'Percentage');        
-    case ('Active/Inactive Minutes')
+    
+    case ('Active/Inactive Duration')
+        % case is active/inactive duration
         [yLim,StrM] = deal([0 60],{'Active Time','Inactive Time'});
         [pStr,pF.yLabel(1).String] = deal({'Tw','Ts'},'Time (min/hour)');
         [tStrP,tStrS] = deal({'Activity','Inactivity'},'Duration');        
+    
     case ('Average/Active Speed')
+        % case is average/active speed
         [yLim,StrM] = deal(NaN,{'Average Speed','Active Speed'});
         [pStr,pF.yLabel(1).String] = deal({'V','Va'},'Speed (mm/sec)');
         [tStrP,tStrS] = deal({'Average','Active'},'Speed');       
+    
     case ('Displacement')
+        % case is displacement
         [yLim,StrM] = deal(NaN,{'Displacement'});
         [pStr,pF.yLabel(1).String] = deal({'D'},'Distance (m)');
         [tStrP,tStrS] = deal({[]},'Active Displacement');               
 end
 
 % sets the metric display indices
-if (strcmp(pP.pMet,'Displacement'))
+if strcmp(pP.pMet,'Displacement')
+    % case is displacement
     [pInd,tStr] = deal(1,sprintf('%s %s',tStrP{1},tStrS));
 else
-    switch (pP.pDisp)
+    % case is the other metrics
+    switch pP.pDisp
         case ('Both Metrics')
+            % case is plotting both metrics
             pInd = [1 2];
             tStr = sprintf('%s/%s %s',tStrP{1},tStrP{2},tStrS);
+        
         case ('First Metric')
+            % case is plotting the first metric only
             [pInd,tStr] = deal(1,sprintf('%s %s',tStrP{1},tStrS));
+        
         case ('Second Metric')        
+            % case is plotting the second metric only
             [pInd,tStr] = deal(2,sprintf('%s %s',tStrP{2},tStrS));
     end
 end
     
 % sets the x-axis label and legend strings
-if (pP.grpTime)
-    % data is grouped by genotype
-    [xStr,lStr] = deal(StrT,StrM');
-else
+if pP.grpType
     % data is grouped by metric
     [xStr,lStr] = deal(StrM(pInd)',StrT);
+else
+    % data is grouped by genotype
+    [xStr,lStr] = deal(StrT,StrM');    
 end
 
 % creates the bar graph/boxplot figures
+xTick = 1:nApp;
 if length(pInd) == 1
-    xTick = 1:nApp;
     plotBarBoxMetrics(hAx,xTick,p,pStr{pInd},pP,yLim);    
 else
     [hPlot,xTick] = plotDoubleBarBoxMetrics(hAx,p,pStr(pInd),pP);
@@ -385,7 +464,7 @@ delete(findall(hAx,'type','text'))
 
 % sets the plot
 set(hAx,'xtick',xTick);
-if (isnan(yLim))
+if isnan(yLim)
     yMax = max(get(hAx,'ylim'));
     set(hAx,'ylim',[0 yMax]); 
     setStandardYAxis(hAx(1),[],6,yMax);    
@@ -394,7 +473,7 @@ else
 end
   
 % adds in the gridlines (if checked)
-if (pP.plotGrid); grid(hAx,'on'); end
+if pP.plotGrid; grid(hAx,'on'); end
 
 % ------------------------------ %
 % --- PLOT AXES REFORMATTING --- %
@@ -408,14 +487,14 @@ formatPlotAxis(hAx,pF,1);
 
 % formats and resets the axis positions
 resetAxesPos(hAx,1,1); 
-if (pP.grpTime)
-    setGroupString(hAx,pF,xTick,xStr,30);
-else
+if pP.grpType
     setGroupString(hAx,pF,xTick,xStr,0);
+else
+    setGroupString(hAx,pF,xTick,xStr,30);    
 end
 
 % creates the legend object
-if (~pP.grpTime) || (length(pInd) > 1)
+if pP.grpType || (length(pInd) > 1)
     % sets up and creates the legend
     pF.Legend.String = lStr;
     hLg = createLegendObj(hPlot,pF.Legend);

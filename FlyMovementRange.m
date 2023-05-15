@@ -10,6 +10,7 @@ pData.Name = 'Fly Distance Statistics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [3 1 1 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -113,6 +114,42 @@ oP = addXVarField(oP,'Prop Dist (mm)','xCDF','Other');
 % sets the dependent output variables
 oP = addYVarField(oP,'Frequency','NH',[],4,{'XH'});
 oP = addYVarField(oP,'Proportion','fCDF',[],4,{'xCDF'});
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% field retrievals
+iAx = dcObj.getSelectAxesIndex;
+
+% sets the common class fields
+dcObj.xName = 'Distance';
+dcObj.xUnits = 'mm/min';
+dcObj.grpName = dcObj.pData.appName;
+
+% sets up the metric specific class fields
+switch iAx
+    case 1
+        % case is the distance histogram
+        dcObj.yName = 'Frequency';
+        dcObj.yUnits = 'Count';
+        dcObj.pType = 'Bar Graph';
+        dcObj.combFig =  false;
+        dcObj.xGrp = dcObj.plotD{1}(1).XH;
+        
+    case 2
+        % case is the distance cdf
+        dcObj.yName = 'Cumulative %';
+        dcObj.yUnits = '%';
+        dcObj.pType = 'Trace';
+        dcObj.combFig =  true;
+        
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
@@ -289,16 +326,15 @@ end
 % retrieves the panel object handle
 hP = getCurrentAxesProp('Parent');             
                 
-% ------------------------------- %
-% --- SUBPLOT FIGURE CREATION --- %
-% ------------------------------- %
-
 % memory allocation
 hAx = cell(2,1);
 
+% ---------------------------------- %
+% --- DISTANCE HISTOGRAM SUBPLOT --- %
+% ---------------------------------- %
+
 % plots the empirical cdf
 hAx{1} = createSubPlotAxes(hP,[2,1],1); hold on; 
-hAx{2} = createSubPlotAxes(hP,[2,1],2); hold on; 
 
 % sets the histogram plot range
 xMx = ceil(find(p(ind).NH>0,1,'last')/(100/cP.Bsz))*100;
@@ -306,19 +342,28 @@ iMx = 2:find((p(ind).XH <= xMx),1,'last');
 
 % plots the histogram
 bar(hAx{1},p(ind).XH(iMx),p(ind).NH(iMx)+1); 
-set(hAx{1},'ylim',yLim,'yscale','log','ygrid','on','xgrid','on','UserData',1)
+set(hAx{1},'ylim',yLim,'yscale','log','ygrid','on',...
+           'xgrid','on','UserData',1)
 
 % sets the plot labels
 formatPlotAxis(hAx{1},pF,1);    
 
+% ---------------------------- %
+% --- DISTANCE CDF SUBPLOT --- %
+% ---------------------------- %
+
+%
+hAx{2} = createSubPlotAxes(hP,[2,1],2); hold on; 
+
 % plots the CDF values for each of the apparatus
 for i = 1:nApp
     % plots the CDF values
-    stairs(hAx{2},p(i).xCDF,100*p(i).fCDF,'color',col{i}); 
+    stairs(hAx{2},p(i).xCDF,100*p(i).fCDF,'color',col{i},'UserData',i); 
 
     % plots the other markers
     xx = p(i).xCDF(find(p(i).fCDF <= pP.pCDF,1,'last'));
-    hPlt{i} = plot(hAx{2},xx*[1 1],100*[0 pP.pCDF],'--','linewidth',2,'color',col{i}); 
+    hPlt{i} = plot(hAx{2},xx*[1 1],100*[0 pP.pCDF],'--',...
+        'linewidth',2,'color',col{i},'UserData',i,'HitTest','off'); 
 end
    
 % creates the legend object

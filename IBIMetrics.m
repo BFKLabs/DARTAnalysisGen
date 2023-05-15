@@ -10,6 +10,7 @@ pData.Name = 'Inter-Bout Interval Statistics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 1 1 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -125,6 +126,51 @@ oP = addYVarField(oP,'Memory','M',Stats,Type1,[],1);
 oP = addYVarField(oP,'Memory (Mean)','M_mn',[],Type2);
 oP = addYVarField(oP,'Memory (SEM)','M_sem',[],Type2);
                          
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+sP = retParaStruct(dcObj.pData.sP);
+pP = retParaStruct(dcObj.pData.pP);
+
+% sets the common class fields
+dcObj.yName = pP.pMet;
+dcObj.yUnits = 'unitless';
+[dcObj.useGrpHdr,dcObj.combFig] = deal(false);
+dcObj.grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the metric specific fields
+switch pP.pMet
+    case 'Mean Survival Curve'
+        % case is the mean survival curve
+        dcObj.pType = 'Fitted Trace';
+        dcObj.yName = 'Probability';
+        dcObj.xName = 'Time';
+        dcObj.xUnits = 'sec';
+        dcObj.useGrpHdr = true;
+        dcObj.combFig = true;
+        
+    case 'Burstiness + Memory'
+        % case is the mean survival curve
+        dcObj.pType = 'Scatterplot';
+        dcObj.yName = 'Burstiness';        
+        dcObj.xName = 'Memory';
+        dcObj.xName2 = 'Group Name';
+        dcObj.xGrp = dcObj.grpName;
+        
+    otherwise
+        % case is the other metrics
+        dcObj.pType = pP.pType;
+        dcObj.xName = 'Group Name';
+        dcObj.xGrp = dcObj.grpName;        
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -358,7 +404,7 @@ axis(hAx,'on'); hold on;
 pF.Legend.String = pData.appName(ind);
 
 % sets the plot values for the 
-if (strcmp(pP.pMet,'Mean Survival Curve'))
+if strcmp(pP.pMet,'Mean Survival Curve')
     % retrieves the plot values
     [Yplt,YpltF,Xplt] = field2cell(p,{'YmnR','YmnF','xB'});         
     pF.xLabel.String = 'Time (sec)';
@@ -370,10 +416,12 @@ if (strcmp(pP.pMet,'Mean Survival Curve'))
     % plots the survival curves
     hPlot = cell(nApp,1);
     for i = 1:nApp
-        hPlot{i} = plot(hAx,Xplt{i},Yplt{i},'color',col{i},'LineWidth',pP.pL);
-        if (pP.plotFit)
+        hPlot{i} = plot(hAx,Xplt{i},Yplt{i},'color',col{i},...
+            'LineWidth',pP.pL,'UserData',i,'tag','hRaw');
+        if pP.plotFit
             % plots the fitted values (if required)
-            plot(hAx,Xplt{i},YpltF{i},'--','Color',col{i},'LineWidth',pP.pL);
+            plot(hAx,Xplt{i},YpltF{i},'--','Color',col{i},...
+                'LineWidth',pP.pL,'UserData',i,'tag','hFit');
         end
     end
             
@@ -381,8 +429,9 @@ if (strcmp(pP.pMet,'Mean Survival Curve'))
     hLg = createLegendObj(hPlot,pF.Legend,1,0);
     
     % updates the axis properties
-    set(hAx,'yscale','log','box','on');   
-elseif (strcmp(pP.pMet,'Burstiness + Memory'))
+    set(hAx,'yscale','log','box','on');
+    
+elseif strcmp(pP.pMet,'Burstiness + Memory')
     % retrieves the plot values
     [Xplt,Yplt] = field2cell(p,{'M','B'});         
     pF.xLabel.String = 'Memory (M)';
@@ -395,7 +444,7 @@ elseif (strcmp(pP.pMet,'Burstiness + Memory'))
     hPlot = cell(nApp,1);
     for i = 1:nApp
         [XpltNw,YpltNw] = deal(cell2mat(Xplt{i}(:)),cell2mat(Yplt{i}(:)));
-        hPlot{i} = plot(hAx,XpltNw,YpltNw,'o','color',col{i});
+        hPlot{i} = plot(hAx,XpltNw,YpltNw,'o','color',col{i},'UserData',i);
     end    
     
     % creates the legend object
@@ -408,7 +457,7 @@ else
     xLim = xi([1 end])+0.5*[-1 1];    
     
     % sets the plot variable string and y-axis string
-    switch (pP.pMet)        
+    switch pP.pMet       
         case ('Shape Factor')
             [pF.yLabel.String,pStr] = deal('Shape (k)','k');        
         case ('Scale Factor')
@@ -425,15 +474,9 @@ else
     % updates the axis properties
     set(hAx,'xticklabel',[],'xlim',xLim,'linewidth',1.5,'UserData',1);
 end
-    
-% % sets the plot
-% if (strcmp(pP.pMet,'Inter-Bout Interval'))
-%     lyMax = ceil(log10(max(get(hAx,'ylim'))));
-%     set(hAx,'ylim',[10^(min(lyMax-1,-1)) 10^lyMax])
-% end
       
 % adds in the gridlines (if checked)
-if (pP.plotGrid); grid(hAx,'on'); end
+if pP.plotGrid; grid(hAx,'on'); end
 
 % ------------------------------ %
 % --- PLOT AXES REFORMATTING --- %
@@ -446,7 +489,7 @@ formatPlotAxis(hAx,pF,1);
 resetAxesPos(hAx,1,1); 
 
 % sets the group strings (if not plotting the survival curve)
-if (~isempty(hLg))
+if ~isempty(hLg)
     % creates the legend object       
     lgP = resetVertLegendWidth(hLg);
     lgP(1:2) = [(1-lgP(3)),(0.5-lgP(4)/2)];

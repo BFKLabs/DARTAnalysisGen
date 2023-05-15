@@ -10,6 +10,7 @@ pData.Name = 'Edge Behaviour (Metrics)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 1 1 3];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if nargin == 1 
@@ -81,7 +82,7 @@ cP(4).TTstr = 'The duration after contact with the wall used to determine edge b
 cP(5).TTstr = 'Minimum duration fly has to be in the outer ring to be considered as edge contact';
 cP(6).TTstr = 'The distance from outside edge whereby fly is considered in contact with wall';
 cP(7).TTstr = 'Smoothing window size for the positional coordinates';
-cP(8).TTstr = 'Angle bin size for the approach angle histogram calculations';
+cP(8).TTstr = 'Angle bin size for the Approach Angle (Histogram) calculations';
 cP(9).TTstr = 'Determines if all or part of the experiment will be used for the analysis';
 cP(10).TTstr = 'Sets the start time of the analysis (minutes from the beginning)';
 cP(11).TTstr = 'Duration of the sub-experiment analysis (in minutes)';
@@ -94,12 +95,12 @@ nPara = 8;
 pP = setParaFields(nPara);
 
 % sets the plot-type list
-pList = {'Approach Angle Histogram','Approach Angle Polar Plot',...
-         'Approach Angle Vector Boxplot','Approach Angle CDF'...
-         'Turn Direction Histogram','Turn Direction Parameters',...
-         'Post-Contact Movement Type','Threshold Movement Duration',...
-         'Post-Contact Displacement','Post-Contact Duration',...
-         'Post-Contact Direction Change','Overall Fly Location'};
+pList = {'Approach Angle (Histogram)','Approach Angle (Polar Plot)',...
+         'Approach Angle (Vector)','Approach Angle (CDF)'...
+         'Turn Direction (Histogram)','Turn Direction (Parameters)',...
+         'Post-Contact (Movement Type)','Threshold Movement (Duration)',...
+         'Post-Contact (Displacement)','Post-Contact (Duration)',...
+         'Post-Contact (Direction Change)','Overall Fly Location'};
 pList2 = {'Bar Graph','Boxplot'};  
 
 % parameter tab strings
@@ -119,7 +120,7 @@ pP(8) = setParaFields(a{2},'Boolean',1,'usePDF','Plot Histogram As Proportional 
 function pF = initPlotFormat(snTot,nApp)
 
 % memory allocation
-if (nargin == 1); nApp = length(snTot.iMov.ok); end
+if nargin == 1; nApp = length(snTot.iMov.ok); end
 pF = setFormatFields(nApp);
 
 % initialises the font structs
@@ -180,6 +181,153 @@ oP = addYVarField(oP,'Edge Displacement (Mean)','DE_mn',[],Type1,xDep1);
 oP = addYVarField(oP,'Edge Displacement (SEM)','DE_sem',[],Type1,xDep1);
 oP = addYVarField(oP,'Edge Displacement (Median)','DE_md',[],Type1,xDep1);
 
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+pP = retParaStruct(dcObj.pData.pP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% other initialisations
+phiB = dcObj.plotD{1}(1).phiB;
+grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the common class fields
+dcObj.yName = pP.pMet; 
+dcObj.grpName = grpName;
+dcObj.useGrpHdr = true;
+dcObj.useXGrp = false;
+dcObj.combFig = false;
+
+% sets the metric specific fields
+switch pP.pMet
+    case 'Approach Angle (Polar Plot)'                
+        % case is the polar plot metrics        
+        PA = field2cell(dcObj.plotD{1}(sP.Sub.isPlot),'PA');
+        iAx = dcObj.getSelectAxesIndex;
+        
+        % sets the class object fields
+        dcObj.pType = 'Polar';
+        dcObj.xName = 'Approach Angle';    
+        dcObj.yName = 'Approach Angle (Counts)'; 
+        [dcObj.xGrp,dcObj.yGrp] = deal(phiB,PA{iAx});
+    
+    case 'Approach Angle (Vector)'
+        % case is the boxplot only metrics
+        
+        % sets the class object fields
+        dcObj.pType = 'Boxplot';
+        [dcObj.xGrp,dcObj.useGrpHdr] = deal(grpName,false);
+        [dcObj.xName,dcObj.yUnits] = deal('Group Name','unitless');         
+        
+    case {'Threshold Movement (Duration)','Post-Contact (Displacement)',...
+          'Post-Contact (Duration)','Overall Fly Location'}
+        % case is the bar/boxplot metrics
+        
+        % sets the class object fields
+        dcObj.pType = pP.pType;
+        dcObj.xName = 'Approach Angle';
+        dcObj.xGrp = phiB;
+        
+        % sets the y-axis units
+        switch pP.pMet
+            case 'Post-Contact (Displacement)'
+                % case is the post-contact displacement
+                dcObj.yUnits = 'mm';
+                
+            case {'Threshold Movement (Duration)',...
+                  'Post-Contact (Duration)'}
+                % case is the threshold movement (duration)
+                dcObj.yUnits = 'sec';
+                
+            case 'Overall Fly Location'
+                % case is the duration specific metrics
+                dcObj.yUnits = '%';
+                dcObj.xGrp = grpName;
+                dcObj.xName = 'Group Name';
+                dcObj.useGrpHdr = false;
+        end
+        
+    case 'Post-Contact (Movement Type)'
+        % case is the stacked barplot metrics        
+        
+        % sets the class object fields
+        dcObj.yUnits = '%';
+        dcObj.pType = 'Stacked Bar Graph';          
+        dcObj.yUnits = 'unitless';
+        dcObj.xName = 'Approach Angle';        
+        dcObj.xGrp2 = {'Stationary','Combination','Moving'};
+        
+        if pP.plotAvg
+            dcObj.xGrp = grpName;
+            dcObj.useGrpHdr = false;
+            dcObj.combFig = true;
+        else
+            dcObj.xGrp = phiB;
+        end
+        
+    case 'Approach Angle (CDF)'
+        % case is the trace only metrics
+        
+        % sets the class object fields
+        dcObj.yUnits = '%';
+        dcObj.pType = 'Trace';
+        dcObj.xName = 'Approach Angle';
+        dcObj.xGrp = phiB;
+        dcObj.yUnits = 'unitless';
+        dcObj.combFig = true;
+        
+    case {'Approach Angle (Histogram)','Turn Direction (Duration)'}
+        % case is the bar + trace metrics
+
+        % sets the common class fields
+        dcObj.xName = 'Approach Angle';
+        dcObj.xGrp = phiB;
+        
+        % sets the class object fields
+        if strcmp(get(dcObj.evnt.Target,'Type'),'bar')
+            % sets the common field types
+            dcObj.pType = 'Bar Graph';
+            dcObj.yUnits = 'Frequency';
+            
+        else
+            % sets the common field types
+            dcObj.pType = 'Trace';
+            dcObj.useXGrp = true;
+            dcObj.tUnits = 'degrees';
+            dcObj.yUnits = 'unitless';
+        end
+        
+    otherwise
+        % case is the bar graph only metrics
+        dcObj.pType = 'Bar Graph';
+        
+        % sets the class object fields
+        switch pP.pMet
+            case 'Turn Direction (Parameters)'
+                % case is the turn direction parameters
+                dcObj.grpName = {'Slope Factor','Shape Factor',...
+                                 'Correlation'};
+                dcObj.xGrp = grpName;
+                dcObj.xName = 'Approach Angle';  
+                
+            case 'Post-Contact (Direction Change)'
+                % case is the post-contact direction change
+                dcObj.yUnits = '%';                
+                dcObj.xGrp = phiB;
+        end
+end
+
+% %
+
+% pList2 = {'Bar Graph','Boxplot'}; 
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -188,7 +336,7 @@ oP = addYVarField(oP,'Edge Displacement (Median)','DE_md',[],Type1,xDep1);
 function [plotD,ok] = calcFunc(snTot,pData,gPara,cP,varargin)
 
 % initialises the calculation parameters (if not already initialised)
-if (nargin == 3)
+if nargin == 3
     % retrieves the parameter struct
     cP = retParaStruct(pData.cP,gPara);
 end
@@ -196,7 +344,7 @@ end
 % checks to see if the solution struct has the sub-region data struct
 snTotL = snTot(1);
 ok = checkFuncPara({'HasSubRegionStruct'},cP,snTotL);
-if (~ok); plotD = []; return; end
+if ~ok; plotD = []; return; end
 
 % sets the movement calculation type
 cP.movType = 'Absolute Speed';
@@ -348,7 +496,7 @@ for i = 1:nExp
                             % determines if the initial index of the new group
                             % relative to the previous is greater than the
                             % frame tolerance
-                            if ((T0(iNw) - T0(iPr)) > (nFrmB+nFrmA))
+                            if (T0(iNw) - T0(iPr)) > (nFrmB+nFrmA)
                                 % if so, then update the previous frame index
                                 % to the new index
                                 iPr = iNw;
@@ -479,7 +627,7 @@ for i = 1:nApp
     [plotD(i).pTD,plotD(i).TDfit] = ...
                 fitTurnDirDist(plotD(i).phiB,plotD(i).TD,plotD(i).PA);                                        
 
-    % sets the fitted turn direction parameters
+    % sets the fitted Turn Direction (Parameters)
     [plotD(i).nTD,plotD(i).ATD,plotD(i).R2TD] = ...
                     deal(plotD(i).pTD.n,plotD(i).pTD.A,plotD(i).pTD.R2);
                 
@@ -502,7 +650,7 @@ for i = 1:nApp
     plotD(i) = calcMetricStats(plotD(i),'TE',6);
     plotD(i) = calcMetricStats(plotD(i),'TM',6);  
     
-    % calculates the approach angle CDF distributions
+    % calculates the Approach Angle (CDF) distributions
     [plotD(i).xCDF,plotD(i).fCDF] = calcAngleCDF(PhiApp{i});    
 end
   
@@ -533,7 +681,7 @@ pF = pData.pF;
 
 % sets the plotting indices and subplot indices
 [ind,m,n] = deal(find(sP.Sub.isPlot),sP.Sub.nRow,sP.Sub.nCol);
-nApp = length(ind); if (nApp == 0); return; end
+nApp = length(ind); if nApp == 0; return; end
 p = plotD{1}(ind);
 
 % sets the flag determining if there are going to be subplots
@@ -564,29 +712,29 @@ xLim = X([1 end]) + 0.5*[-1 1];
 [xStr,pType] = deal('Approach Angle (deg)','bar');
 
 % sets the plot values/axis labels based on the metric type
-switch (pP.pMet)
-    case ('Approach Angle Histogram')
+switch pP.pMet
+    case ('Approach Angle (Histogram)')
         % sets the plot values    
         Y = field2cell(p,'PA');
         N = cellfun(@(x)(sum(x)),Y,'un',0);
-        if (pP.usePDF)
+        if pP.usePDF
             % if using the the PDF values, then scale them             
             Y = cellfun(@(x,y)(x/y),Y,N,'un',0); 
         end
         
         % sets the fitted values (if required)
-        if (pP.plotFit)
+        if pP.plotFit
             Yfit = field2cell(p,'PAfit');            
-            if (~pP.usePDF)
+            if ~pP.usePDF
                 % if not using the the PDF values, then scale them
                 Yfit = cellfun(@(x,y)(x*y),Yfit,N,'un',0); 
             end
         end
             
         % sets the x/y-axis label strings        
-        if (pP.usePDF); yStr = 'Proportion'; else yStr = 'Frequency'; end
+        if pP.usePDF; yStr = 'Proportion'; else yStr = 'Frequency'; end
         
-    case ('Approach Angle Polar Plot')
+    case ('Approach Angle (Polar Plot)')
         % sets the plot data
         [phi,pType,yStr] = deal(p(1).phiB,'polar','');
         [dphi,d2r,pF.Axis.Font.Color] = deal(diff(phi([1 2])),(pi/180),'w');
@@ -594,7 +742,7 @@ switch (pP.pMet)
         % sets the plot data
         Y = cellfun(@(x)(x/max(x)),field2cell(p,'PA'),'un',0);               
         
-    case ('Approach Angle Vector Boxplot')
+    case ('Approach Angle (Vector)')
         %
         [rotXAx,isSub,xStr] = deal(true,false,'');
         [pType,yStr] = deal('boxplot','Vector Length (Normalised)');
@@ -605,19 +753,19 @@ switch (pP.pMet)
         xTickLbl = field2cell(pF.Title(ind),'String');
         xLim = xTick([1 end]) + 0.5*[-1 1];        
         
-        %
-        pF.xLabel(1).String = '';
+        % sets the title/x-label properties
         pF.Title(1).String = 'Approach Angle Vector Lengths';
+        pF.xLabel(1).String = '';
         pF.xLabel(1).Font.FontSize = 1;
         
-    case ('Approach Angle CDF')
+    case ('Approach Angle (CDF)')
         % sets the plot values  
         [isSub,setXTick,pType] = deal(false,false,'plot');
         [X,Y] = deal(p(1).xCDF,100*cell2mat(field2cell(p','fCDF')));
         [xLim,xTick] = deal([-90 90],-90:10:90);
         
         % set main title and y-axis strings
-        pF.Title(1).String = 'Approach Angle CDF';
+        pF.Title(1).String = 'Approach Angle (CDF)';
         yStr = 'Cumulative Percentage'; 
         lStr = snTot(1).iMov.pInfo.gName(ind);
         
@@ -652,20 +800,20 @@ switch (pP.pMet)
 %         % sets the y-axis label strings        
 %         [yStr,xStr] = deal('Parameter Value','Group Name');
         
-    case ('Turn Direction Histogram')
+    case ('Turn Direction (Histogram)')
         % sets the plot values    
         [fitVal,fitLoc] = deal(field2cell(p','pTD'),'NorthEast');
         Y = field2cell(p,'TD')';
         
         % sets the fitted values (if required)
-        if (pP.plotFit)
+        if pP.plotFit
             Yfit = field2cell(p,'TDfit');            
         end
             
         % sets the y-axis label strings        
         yStr = 'Turn Direction';
         
-    case ('Turn Direction Parameters')
+    case ('Turn Direction (Parameters)')
         % sets the plot values  
         [X,nApp,m,n,setYLim,rotXAx,ii] = deal(1:nApp,3,1,3,false,true,ind);
         [Y,Ysem] = deal(cell(nApp,1));
@@ -685,13 +833,13 @@ switch (pP.pMet)
             % sets the plot values and SEM values (if they exist)
             Ynw = cell2mat(field2cell(p,fStr{i}));
             Y{i} = Ynw(:,1);
-            if (size(Ynw,2) == 2); Ysem{i} = Ynw(:,2); end
+            if size(Ynw,2) == 2; Ysem{i} = Ynw(:,2); end
         end
                 
         % sets the y-axis label strings        
         [yStr,xStr] = deal('Parameter Value','');
                    
-    case ('Post-Contact Movement Type')
+    case ('Post-Contact (Movement Type)')
         % retrieves 
         pType = 'barstack';
         Y = field2cell(p,'DM');       
@@ -706,7 +854,7 @@ switch (pP.pMet)
             xLim = xTick([1 end]) + 0.5*[-1 1];            
             
             % resets the title string
-            pF.Title(1).String = 'Post-Contact Movement Type';
+            pF.Title(1).String = 'Post-Contact (Movement Type)';
         end
         
         % set legend strings and the y-axis string/limits
@@ -714,7 +862,7 @@ switch (pP.pMet)
         lStr = {'Stationary','Combination','Moving'}';
         [yStr,yLim] = deal('Percentage',[0 100]);        
                 
-    case ('Threshold Movement Duration')
+    case ('Threshold Movement (Duration)')
         % sets the plot values
         TM = field2cell(p,'TM');
         if strcmp(pP.pType,'Boxplot')
@@ -759,7 +907,7 @@ switch (pP.pMet)
         % sets the y-axis string
         yStr = 'Threshold Time (sec)';                    
         
-    case ('Post-Contact Displacement')
+    case ('Post-Contact (Displacement)')
         % sets the plot values
         DE = field2cell(p,'DE');
         if strcmp(pP.pType,'Boxplot')
@@ -804,7 +952,7 @@ switch (pP.pMet)
         % sets the y-axis string        
         yStr = 'Distance (mm)';
         
-    case ('Post-Contact Duration')
+    case ('Post-Contact (Duration)')
         % sets the plot values
         TE = field2cell(p,'TE');
         if strcmp(pP.pType,'Boxplot')
@@ -849,7 +997,7 @@ switch (pP.pMet)
         % sets the y-axis string        
         yStr = 'Duration (s)';                       
         
-    case ('Post-Contact Direction Change')
+    case ('Post-Contact (Direction Change)')
         % sets the plot values
         [DT,pType] = deal(field2cell(p,'DT'),'bar');
         if pP.plotAvg
@@ -871,7 +1019,7 @@ switch (pP.pMet)
             xLim = xTick([1 end]) + 0.5*[-1 1];            
             
             % resets the title string
-            pF.Title(1).String = 'Post-Contact Direction Change';            
+            pF.Title(1).String = 'Post-Contact (Direction Change)';            
         end        
         
         % sets the y-axis string        
@@ -880,7 +1028,7 @@ switch (pP.pMet)
     case ('Overall Fly Location')
         % sets the plot values
         [X,isSub,rotXAx] = deal(1:length(p),false,true);
-        if (strcmp(pP.pType,'Boxplot'))
+        if strcmp(pP.pType,'Boxplot')
             [pType,yLim] = deal('boxplot',[0 100]+5*[-1 1]);
             Y = combineNumericCells(field2cell(p,'PrE')');
         else
@@ -899,9 +1047,9 @@ switch (pP.pMet)
 end
 
 %
-if (isSub)
+if isSub
     % reformats the font data struct for the current subplot count
-    if (isempty(m)); szMx = 1; else; szMx = max([m n]); end
+    if isempty(m); szMx = 1; else; szMx = max([m n]); end
     pF = retFormatStruct(pF,szMx);
     
     % sets the y-label indices
@@ -910,7 +1058,7 @@ if (isSub)
     [pF.xLabel.String,pF.yLabel.String] = deal(xStr,yStr);     
     
     % determines if the y-limits need to be recalculated
-    if (isempty(yLim) && (setYLim))
+    if isempty(yLim) && setYLim
         [yLim,recalcYLim] = deal([1e10,-1e10],true);
     else
         recalcYLim = false;
@@ -921,50 +1069,59 @@ if (isSub)
         % creates the subplot and the graph of the metric
         hAx(i) = createSubPlotAxes(hP,[m,n],i);
         hold(hAx(i),'on');
-        if (m*n == 1); axis(hAx(i),'on'); end
+        if m*n == 1; axis(hAx(i),'on'); end
         
         % creates the metric graph
-        switch (pType)
+        switch pType
             case ('polar')                
+                % case is a polar plot
+                
                 % sets the patch colour index (first group only)
-                if (i == 1); iCol = num2cell(mod(1:length(phi),2)+1); end
+                if i == 1; iCol = mod(1:length(phi),2)+1; end
                 
                 % creates the polar plot axis
                 polarPlotSetup(hAx(i),pF,false);
                 
                 % creates the polar plot patches
-                cellfun(@(x,y,z)(createPolarPlotPatch(hAx(i),x,y,dphi,z)),...
-                                num2cell(phi),num2cell(Y{i}),iCol);                 
+                indP = num2cell(1:length(phi));
+                hPol = arrayfun(@(x,y,z)(createPolarPlotPatch...
+                    (hAx(i),x,y,dphi,z)),phi,Y{i},iCol,'un',0);
+                cellfun(@(h,i)(set(h,'UserData',i)),hPol,indP);
                 
                 % resets the x-axis limits
-                xLim = get(hAx(i),'xlim');
-                                
+                xLim = get(hAx(i),'xlim');                                
+            
             case ('boxplot')       
-                if (pP.plotErr)
+                % case is a boxplot
+                if pP.plotErr
                     hPlt{i} = boxplot(Y{i},'sym','r*','outliersize',3);
                 else
                     hPlt{i} = boxplot(Y{i},'sym','r');
                 end
+                
             case ('bar')
+                % case is a bar graph
                 hPlt{i} = bar(X,Y{i},'tag','hBar');
+            
             case ('barstack')
+                % case is a stacked bar graph
                 hPlt{i} = bar(X,Y{i},'stacked');
         end
                 
         % plots the fitted line (if required)        
-        if (~isempty(Yfit)); plot(X,Yfit{i},'r','linewidth',2); end                
-        if (pP.plotGrid); grid on; end       
+        if pP.plotGrid; grid on; end               
+        if ~isempty(Yfit);plot(X,Yfit{i},'r','linewidth',2); end
         set(hAx(i),'xlim',xLim,'UserData',i)
         
         % adds the error bars to the figure (if they exists & are required)
-        if ((pP.plotErr) && (~isempty(Ysem)))
-            if (~isempty(Ysem{i}))
+        if pP.plotErr && ~isempty(Ysem)
+            if ~isempty(Ysem{i})
                 addBarError(hPlt{i},X,Y{i},Ysem{i},'g'); 
             end
         end                   
         
         % sets the overall limits
-        if (recalcYLim)
+        if recalcYLim
             yLimNw = get(hAx(i),'ylim');
             yLim = [min(yLim(1),yLimNw(1)),max(yLim(2),yLimNw(2))];                
         end        
@@ -974,9 +1131,9 @@ if (isSub)
     end
     
     % updates the axis limits
-    if (setYLim) 
+    if setYLim
         cellfun(@(x)(set(x,'ylim',yLim)),num2cell(hAx)); 
-        if (log10(diff(yLim)) > 3)
+        if log10(diff(yLim)) > 3
             yLim = [max(1,yLim(1)),10^ceil(log10(yLim(2)))];
             cellfun(@(x)(set(x,'yscale','log','ylim',yLim)),num2cell(hAx));
         end
@@ -986,7 +1143,7 @@ if (isSub)
     formatMultiXYLabels(hAx,pF,[m,n]);
         
     % sets the legend (if first subplot and strings have been set)
-    if (~isempty(lStr))
+    if ~isempty(lStr)
         % creates legend object
         [pF.Legend.String,pF.Legend.lgHorz] = deal(lStr,lgHorz);
         hLg = createLegendObj(hPlt{nApp},pF.Legend);        
@@ -999,7 +1156,7 @@ if (isSub)
     % sets the x-axis strings/ticklabels
     for i = 1:nApp
         % sets the axis properties        
-        if (rotXAx)
+        if rotXAx
             setGroupString(hAx(i),pF,X,xTickLbl,-90,0.01); 
         else
             set(hAx(i),'xTick',xTick,'xTickLabel',xTickLbl)
@@ -1007,14 +1164,14 @@ if (isSub)
     end
         
     % resets the legend position
-    if (strcmp(pP.pMet,'Post-Contact Movement Type'))                        
+    if strcmp(pP.pMet,'Post-Contact (Movement Type)')                       
         % retrieves legend position and resets to the new position
         pLg = get(hLg,'position');
         set(hLg,'position',[(1-pLg(3))/2,1-pLg(4),pLg(3:4)])
                 
         % updates the position of the legend object        
         resetLegendPos(hLg,hAx)
-    elseif (strcmp(pP.pMet,'Approach Angle Polar Plot'))              
+    elseif strcmp(pP.pMet,'Approach Angle (Polar Plot)')
         % creates the mean arrow for each sub-group
         for i = 1:nApp
             % converts the axis local coordinates to global coordinates
@@ -1030,7 +1187,7 @@ if (isSub)
 
             % creates the arrow annotations
             hArr = annotation(hP,'arrow',xArr,yArr,...
-                                 'color','r','linewidth',2);                
+                                 'color','r','linewidth',2);
             set(hArr,'units','pixels');
         end        
     end    
@@ -1054,10 +1211,11 @@ if (isSub)
             [hExt,dX,dY] = deal(get(hText,'Extent'),diff(xLim),diff(yLim));
             
             % calculates the new position of the parameters
-            switch (fitLoc)
+            switch fitLoc
                 case ('NorthEast')
                     hPosNw = [xLim(2)-hExt(3),yLim(2)-hExt(4)/2+pDel*dY,1];
 %                     hPosNw = [(mean(xLim)-hExt(3)/2),(yLim(2)-hExt(4)),1];
+                
                 case ('SouthWest')
                     hPosNw = [xLim(1)+pDel*dX,yLim(1)+hExt(4)/2+pDel*dY,1];
             end
@@ -1073,47 +1231,59 @@ else
     axis(hAx,'on');
         
     % creates the metric graph 
-    switch (pType)
+    switch pType
         case ('boxplot')       
+            % case is a boxplot
             uData0 = get(hAx,'UserData');
-            if (pP.plotErr)
+            if pP.plotErr
+                % case is plotting outliers
                 hPlt = boxplot(Y,'sym','r*','outliersize',3);
             else
+                % case is otherwise
                 hPlt = boxplot(Y,'sym','r');
             end    
             
             % removes the extraneous text markers
             hText = findall(hAx,'type','text');
-            if (~isempty(hText))
-                if (length(hText) == 1)
+            if ~isempty(hText)
+                if length(hText) == 1
                     tStr = {get(hText,'string')};
                 else
                     tStr = get(hText,'String');
                 end
 
+                % sets the axis properties and deletes the text markers
                 set(hAx,'UserData',uData0)
                 delete(hText(~cellfun('isempty',tStr)));
             end
+            
         case ('plot')
-            hPlt = plot(X,Y);
+            % case is a line plot
+            iPlt = num2cell(1:size(Y,2));
+            hPlt = arr2vec(cellfun(@(y,i)...
+                (plot(X,y,'UserData',i)),num2cell(Y,1),iPlt));
+            
         case ('bar')
+            % case is a bar graph
             hPlt = bar(X,Y,'tag','hBar');
+            
         case ('barstack')
+            % case is a stacked bar graph
             hPlt = bar(X,Y,'stacked');            
     end
        
     % adds in the plot errorbars (if they exist and are required)
-    if ((pP.plotErr) && (~isempty(Ysem)))
+    if pP.plotErr && ~isempty(Ysem)
         addBarError(hPlt,X,Y,Ysem,'g'); 
     end                     
     
     % sets the axis properties
     set(hAx,'Units','Normalized','xLim',xLim,'UserData',1);
-    if (pP.plotGrid); grid on; end 
-    if (~isempty(yLim)); set(hAx,'ylim',yLim); end
+    if pP.plotGrid; grid on; end 
+    if ~isempty(yLim); set(hAx,'ylim',yLim); end
     
     yLim = get(hAx,'yLim');
-    if (log10(diff(yLim)) > 3)
+    if log10(diff(yLim)) > 3
         yLim = [max(1,yLim(1)),10^ceil(log10(yLim(2)))];
         set(hAx,'yscale','log','ylim',yLim);
     end     
@@ -1127,16 +1297,19 @@ else
     resetAxesPos(hAx,1,1);    
     
     % special additions to the figure
-    switch (pP.pMet)
-        case ('Approach Angle CDF')
-            plot([0 0],get(hAx,'ylim'),'r--')
-            plot(get(hAx,'xlim'),50*[1 1],'r--')
-        case ('Approach Angle Vector Boxplot')
+    switch pP.pMet
+        case ('Approach Angle (CDF)')
+            % case is the Approach Angle (CDF)
+            plot([0 0],get(hAx,'ylim'),'r--','HitTest','off')
+            plot(get(hAx,'xlim'),50*[1 1],'r--','HitTest','off')
+
+        case ('Approach Angle (Vector)')
+            % case is the Approach Angle (Vector)
             set(hAx,'ylim',[-0.05 1.05])
     end     
     
     % sets up the legend (if the subplot has one)
-    if (~isempty(lStr))
+    if ~isempty(lStr)
         % creates the legend object
         [pF.Legend.String,pF.Legend.lgHorz] = deal(lStr,lgHorz);
         hLg = createLegendObj(hPlt,pF.Legend);  
@@ -1144,14 +1317,14 @@ else
         
         % specialised legend placement
         pLg = get(hLg,'position');
-        switch (pP.pMet)
-            case ('Approach Angle CDF')     
+        switch pP.pMet
+            case ('Approach Angle (CDF)')     
                 % resets the legend position            
                 set(hLg,'Position',[(1-pLg(3)),0.5*(1-pLg(4)),pLg(3:4)])   
 
                 % updates the position of the legend object        
                 resetLegendPos(hLg,hAx)
-            case ('Post-Contact Movement Type')                
+            case ('Post-Contact (Movement Type)')                
                 % retrieves legend position and resets to the new position
                 set(hLg,'position',[(1-pLg(3))/2,1-pLg(4),pLg(3:4)])
                 
@@ -1164,15 +1337,15 @@ else
         end            
     end      
     
-    % 
-    if (rotXAx)
+    % sets the x-axis text labels
+    if rotXAx
         setGroupString(hAx,pF,X,xTickLbl,30,0.0); 
-    elseif (setXTick)
+    elseif setXTick
         set(hAx,'xTick',xTick,'xTickLabel',xTickLbl)
     end                             
     
     % resets the legend position
-    if (strcmp(pP.pMet,'Post-Contact Movement Type'))
+    if strcmp(pP.pMet,'Post-Contact (Movement Type)')
         % retrieves legend position and resets to the new position
         pLg = get(hLg,'position');
         [pAx,dH] = deal(get(hAx,'position'),(lgOfs+pLg(4)));
@@ -1227,10 +1400,10 @@ D = sqrt((0.5*(xBR(2:end)+xBR(1:end-1))).^2+(0.5*(yBR(2:end)+yBR(1:end-1))).^2);
 % x-coordinates is less than zero. if there are none, then set the index to
 % the first frame (i.e., all frames are included in the calculation)
 i0 = find(diff(xBR) < 0,1,'last');
-if (isempty(i0)); i0 = 0; end
+if isempty(i0); i0 = 0; end
 
 % otherwise, calculate the mean approcach angle from the sequence
-if (i0 == length(xB))
+if i0 == length(xB)
     PhiA = NaN;
 else
     ii = (i0+1):length(xB);
@@ -1239,7 +1412,7 @@ else
     PhiA = sum(Q.*atan2(dyBR,dxBR).*(abs(dyBR) > 1e-6));
 end
 
-% --- calculates the approach angle CDF values
+% --- calculates the Approach Angle (CDF) values
 function [xCDF,fCDF] = calcAngleCDF(PhiA)
 
 % initialisations
@@ -1263,7 +1436,7 @@ else
     fCDF = min(1,max(0,interp1(x,f,xCDF,'linear','extrap')));
 end
 
-% --- 
+% --- sets up the fitted parameter text string
 function fitStr = getFittedParaText(p)
 
 % initialisations
@@ -1276,18 +1449,18 @@ for i = 1:length(fStr)
     nwVal = eval(sprintf('p.%s',fStr{i}));
     
     % sets the values into the overall string
-    if (length(nwVal) == 1)
+    if length(nwVal) == 1
         fitStr = sprintf('%sR^2 = %.4f',fitStr,nwVal(1));
     else
-        if (any(strcmp(latStr,fStr{i})))
-            if (isnan(nwVal(2)))
+        if any(strcmp(latStr,fStr{i}))
+            if isnan(nwVal(2))
                 fitStr = sprintf('%s\\%s = %.2f',fitStr,fStr{i},nwVal(1));                
             else
                 fitStr = sprintf('%s\\%s = %.2f +/- %.2f',...
                                         fitStr,fStr{i},nwVal(1),nwVal(2));
             end
         else
-            if (isnan(nwVal(2)))
+            if isnan(nwVal(2))
                 fitStr = sprintf('%s%s = %.2f',fitStr,fStr{i},nwVal(1));                
             else            
                 fitStr = sprintf('%s%s = %.2f +/- %.2f',...
@@ -1297,5 +1470,5 @@ for i = 1:length(fStr)
     end
     
     % adds a carriage return (except for last parameter)
-    if (i ~= length(fStr)); fitStr = sprintf('%s\n',fitStr); end
+    if i ~= length(fStr); fitStr = sprintf('%s\n',fitStr); end
 end

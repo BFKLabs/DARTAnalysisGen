@@ -10,6 +10,7 @@ pData.Name = 'Turning Behaviour (Metrics)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 1 1 3];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -117,7 +118,33 @@ oP = addYVarField(oP,'Direction Change (SEM)','dDC_sem',[],Type2);
 oP = addYVarField(oP,'Direction Change (Median)','dDC_md',[],Type2);
 oP = addYVarField(oP,'Direction Change (Lower Quartile)','dDC_lq',[],Type2);
 oP = addYVarField(oP,'Direction Change (Upper Quartile)','dDC_uq',[],Type2);
-                         
+             
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+sP = retParaStruct(dcObj.pData.sP);
+
+% field retrievals
+uStr = {'count','%'};
+mStr = {'Turn Count','Direction % Changes'};
+iAx = dcObj.getSelectAxesIndex;
+grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the common class fields
+dcObj.pType = 'Boxplot';
+dcObj.yName = mStr{iAx};
+dcObj.yUnits = uStr{iAx};
+dcObj.grpName = grpName;
+[dcObj.useGrpHdr,dcObj.combFig] = deal(false);
+[dcObj.xName,dcObj.xGrp] = deal('Group Name',grpName);
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -418,18 +445,20 @@ for i = 1:2
     delete(findall(hAx{i},'type','text'))
     
     % sets the axis properties
+    xLim = 0.5 + [0,size(Yplt,2)];
     set(hAx{1},'xtick',xi,'TickLength',[0 0])
     if (i == 2)
-        set(hAx{i},'ylim',[-2 103])
+        set(hAx{i},'ylim',[-2 103],'xLim',xLim)
     else
-        set(hAx{i},'ylim',[0 max(get(hAx{i},'ylim'))])
+        set(hAx{i},'ylim',[0 max(get(hAx{i},'ylim'))],'xLim',xLim)
     end
     
     % sets the x-axis labels
+    set(hAx{i},'UserData',i);
     formatPlotAxis(hAx{i},pF,i);              
     
     % adds in the gridlines (if checked)    
-    if (pP.plotGrid); grid(hAx{i},'on'); end    
+    if pP.plotGrid; grid(hAx{i},'on'); end    
 end
 
 % formats and resets the axis positions

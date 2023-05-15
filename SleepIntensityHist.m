@@ -10,9 +10,10 @@ pData.Name = 'Sleep Intensity (Histograms)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 3 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
-if (nargin == 1)    
+if nargin == 1
     % parameter data struct initialisation
     snTotL = snTot(1);
     pData.cP = initCalcPara(snTot);
@@ -86,7 +87,7 @@ a = {'1 - General','2 - Histograms'};
 % sets the parameter fields
 pP(1) = setParaFields(a{1},'Boolean',0,'plotGrid','Plot Axis Gridlines');
 pP(2) = setParaFields(a{2},'List',{1,pList},'pMet','Histogram Plot Metrics');
-pP(3) = setParaFields(a{2},'Boolean',0,'groupType','Group Histograms By Type');
+pP(3) = setParaFields(a{2},'Boolean',0,'grpTime','Group Histograms By Type');
 pP(4) = setParaFields(a{2},'Number',0.75,'pW','Bar Plot Relative Width',[0 1 false]);
 
 % --- initialises the plot formatting data struct --- %
@@ -128,6 +129,55 @@ oP = addYVarField(oP,'Reaction Proportion','Pr',Stats,[],xDep);
 oP = addYVarField(oP,'Reaction Proportion (Mean)','Pr_P',[],Type2,xDep);
 oP = addYVarField(oP,'Reaction Proportion (SEM)','Pr_sem',[],Type2,xDep);
 
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+Tgrp = dcObj.plotD{1}(1).Tgrp;
+pP = retParaStruct(dcObj.pData.pP);
+
+% sets the common class fields
+dcObj.yName = pP.pMet;
+dcObj.xName = 'Time Group';
+dcObj.pType = 'Multi-Bar Graph';
+
+% sets the y-metric units
+switch pP.pMet
+    case 'Histogram Count'
+        % case is the histogram count
+        dcObj.yUnits = 'count';
+        
+    case 'Reaction Proportion'
+        % case is the reaction proportion
+        dcObj.yUnits = '%';
+        
+end
+
+% initialisations
+grpName = dcObj.pData.appName;
+sType = {'Day Activity','Night Activity'};
+[tStr,sStr] = deal('Bin Size','Temporal Activity');
+    
+% sets the x-metric fields (based on grouping type)
+if pP.grpTime
+    % case is the data is grouped by day/night activity
+    dcObj.grpName = sType;
+    [dcObj.xName,dcObj.xName2] = deal(tStr,'Group Name');
+    [dcObj.xGrp,dcObj.xGrp2] = deal(Tgrp,grpName);
+    
+else
+    % case is the data is grouped by time-groups
+    dcObj.grpName = grpName;    
+    [dcObj.xName,dcObj.xName2] = deal(tStr,sStr);
+    [dcObj.xGrp,dcObj.xGrp2] = deal(Tgrp,sType);
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -136,7 +186,7 @@ oP = addYVarField(oP,'Reaction Proportion (SEM)','Pr_sem',[],Type2,xDep);
 function [plotD,ok] = calcFunc(snTot,pData,gPara,cP)
 
 % initialises the calculation parameters (if not already initialised)
-if (nargin == 3)
+if nargin == 3
     % retrieves the parameter struct
     cP = retParaStruct(pData.cP,gPara);
 end
@@ -271,11 +321,11 @@ sepDN = size(plotD{1}(1).Pr_P,1) == 2;
 % if the incorrect combination is used, then exit with an error (not
 % possible to plot the day/night separation and combined histograms
 % together)
-if (strcmp(pP.pMet,'Combined Histograms') && (sepDN))
+if strcmp(pP.pMet,'Combined Histograms') && sepDN
     eStr = 'Not possible to plot the Combined Histograms with Day/Night Separation';
     waitfor(msgbox(eStr,'Incorrect Plot Format','modal'))
     return
-elseif (strcmp(pP.pMet,'Combined Histograms') && (pP.groupType))
+elseif strcmp(pP.pMet,'Combined Histograms') && pP.grpTime
     eStr = 'Not possible to plot the Combined Histograms with Type Grouping';
     waitfor(msgbox(eStr,'Incorrect Plot Format','modal'))
     return    
@@ -287,7 +337,7 @@ end
 
 % sets the plotting indices and subplot indices
 [ind,m,n] = deal(find(sP.Sub.isPlot),sP.Sub.nRow,sP.Sub.nCol);
-nApp = length(ind); if (nApp == 0); return; end
+nApp = length(ind); if nApp == 0; return; end
 p = plotD{1}(ind);
 
 % other parameters
@@ -301,9 +351,9 @@ hP = getCurrentAxesProp('Parent');
 % ---------------------------------------- %
 
 % retrieves the formatting struct
-if (isempty(m))
+if isempty(m)
     szMx = 1;
-elseif (pP.groupType)
+elseif pP.grpTime
     szMx = ceil(length(sP.Sub.isPlot)/2);
     pF.Legend.String = pData.appName(ind);
     [ind,n] = deal(1:(1+cP.sepDN),1);
@@ -327,12 +377,12 @@ pF.yLabel.String = 'Frequency';
 % ----------------------- %
 
 % plots the histograms for each of the apparatus
-if (pP.groupType)
+if pP.grpTime
     % memory allocation
     hAx = cell(1+sepDN,1);
     
     % sets the title strings based on the calculation type
-    if (sepDN)
+    if sepDN
         % case is day/night separation
         pF.Title = repmat(pF.Title,[1,2]);
         pF.Title(1).String = 'Day Activity';
@@ -352,15 +402,15 @@ if (pP.groupType)
         hold(hAx{i},'on');
         HistNw = cell2mat(cellfun(@(x)(x(i,:)),Hist,'un',0))';                
 
-        switch (pP.pMet)
+        switch pP.pMet
             case ('Histogram Count') 
                 [yLim,Yplt,Ysem] = deal([0 detOverallLimit(Hist)],HistNw,[]);   
+            
             case ('Reaction Proportion')                    
-                Yplt = cell2mat(cellfun(@(x)(x(i,:)),...
-                                        field2cell(p,'Pr_P'),'un',0))';
-                [yLim,Ysem] = deal([0 100],100*sqrt((Yplt.*(1 - Yplt))./HistNw));
-                Yplt = Yplt*100;
-                pF.yLabel.String = '% Active'; 
+                [yLim,PrP] = deal([0 100],field2cell(p,'Pr_P'));
+                Yplt = cell2mat(cellfun(@(x)(x(i,:)),PrP,'un',0))';
+                Ysem = 100*sqrt((Yplt.*(1 - Yplt))./HistNw);
+                [Yplt,pF.yLabel.String] = deal(Yplt*100,'% Active'); 
         end                        
         
         % creates the bar plot
@@ -371,7 +421,7 @@ if (pP.groupType)
         formatPlotAxis(hAx{i},pF,i,1);       
          
         % turns the grid on (if specified)
-        if (pP.plotGrid); set(hAx{i},'ygrid','on','yminorgrid','on'); end                       
+        if pP.plotGrid; set(hAx{i},'ygrid','on','yminorgrid','on'); end                       
     end
     
     % sets the non-aligned x/y labels
@@ -381,7 +431,7 @@ if (pP.groupType)
     resetAxesPos(hAx,(1+sepDN),1);     
     
     % creates the legend object
-    if (nApp > 1)
+    if nApp > 1
         hLg = createLegendObj(hBar,pF.Legend);
 
         % resets the legend position
@@ -396,7 +446,7 @@ if (pP.groupType)
         axis(hAx{i},'on')        
         
         % updates the axis position
-        if (nApp > 1)
+        if nApp > 1
             axP = get(hAx{i},'position');
             axP(3) = lgP(1) - axP(1);
             set(hAx{i},'position',axP);               
@@ -445,16 +495,17 @@ else
         end
 
         % if the SEM signal is set, then add the error bars
-        if (~isempty(Ysem))                
+        if ~isempty(Ysem)
             for j = 1:size(Yplt,1)
                 Yplt(isnan(Ysem)|(Ysem==0)) = NaN;
                 xiNw = xi + sepDN*(2*(j-1)-1)/4;
-                addBarError(hAx{i}(1),xiNw,Yplt(j,:),Ysem(j,:),'r',3);
+                addBarError(hAx{i}(1),...
+                    xiNw,Yplt(j,:),Ysem(j,:),'r',3,0.75,[0,100]);
             end
         end    
 
         % updates the axis properties                
-        if (length(hAx{i}) == 1)
+        if length(hAx{i}) == 1
             % formats the single axis
             formatPlotAxis(hAx{i}(1),pF,ind(i));                 
         else
@@ -463,10 +514,10 @@ else
         end        
                 
         % sets the x-axis strings
-        if (length(hAx{i}) > 1); resetAxisPos(hAx{i}); end
+        if length(hAx{i}) > 1; resetAxisPos(hAx{i}); end
                 
         % turns the grid on (if specified)
-        if (pP.plotGrid)
+        if pP.plotGrid
             set(hAx{i}(1),'ygrid','on','yminorgrid','on')
         end                    
 
@@ -485,7 +536,7 @@ else
     % adds the x-tick labels (and resets any double axis)
     for i = 1:nApp
         setGroupString(hAx{i}(1),pF(1),xi,xStr,-45);
-        if (strcmp(pP.pMet,'Combined Histograms'))
+        if strcmp(pP.pMet,'Combined Histograms')
             set(hAx{i}(2),'Position',get(hAx{i}(1),'position'))
         end
     end     
@@ -502,7 +553,7 @@ function [pData,plotD] = outFunc(pData,plotD,snTot)
 cP = retParaStruct(pData.cP);
 
 % removes the day index dependency if not separating by day
-if (~cP.sepDN)
+if ~cP.sepDN
     % determines which output variables have a day index dependency
     xDep = field2cell(pData.oP.yVar,'xDep');
     ii = find(cellfun(@(x)(any(strcmp(x,'dnStr'))),xDep));

@@ -10,6 +10,7 @@ pData.Name = 'Population Waking Metrics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 1 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -126,6 +127,41 @@ oP = addXVarField(oP,'Time Group','Tgrp','Group');
 oP = addYVarField(oP,'Total Speed','Dt',Stats,Type,{'Tgrp'},1);
 oP = addYVarField(oP,'Wake Speed','Dw',Stats,Type,{'Tgrp'},1);
 oP = addYVarField(oP,'Wake Duration','Tw',Stats,Type,{'Tgrp'},1);
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(~,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+cP = retParaStruct(dcObj.pData.cP);
+pP = retParaStruct(dcObj.pData.pP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% sets the common class fields
+dcObj.pType = pP.pType;
+dcObj.yName = pP.pMet;
+dcObj.xName = 'Time Group';
+dcObj.xGrp = dcObj.plotD{1}(1).Tgrp;
+dcObj.combFig =  strcmp(cP.nGrp,'1');
+[dcObj.xUnits,dcObj.yGrp] = deal([]);
+dcObj.grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the metric units (based on the plot metric)
+switch dcObj.pType
+    case {'Average Total Speed', 'Average Wake Speed'}
+        % case is the average total speed
+        dcObj.yUnits = 'mm/sec';
+        
+    case 'Waking Duration'
+        % case is the waking duation
+        dcObj.yUnits = 'sec';
+        
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
@@ -308,22 +344,24 @@ nGrp = str2double(cP.nGrp);
 % ---------------------------------------- %
 
 % retrieves the formatting struct
-if (nGrp == 1)
+if nGrp == 1
     pF = retFormatStruct(pF,1);
 else
-    if (isempty(m)); szMx = 1; else; szMx = max([m n]); end
+    if isempty(m); szMx = 1; else; szMx = max([m n]); end
     pF = retFormatStruct(pF,szMx);
 end
 
 % sets the y-axis label string
-if (strcmp(pP.pMet,'Waking Duration'))
-    pF.yLabel.String = 'Wake Duration (min/hour)';        
-else
-    if (strcmp(p(1).movType,'Midline Crossing'))
-        pF.yLabel.String = 'Wake Activity (count/min)';
-    else
+switch pP.pMet
+    case 'Waking Duration'
+        pF.yLabel.String = 'Wake Duration (min/hour)';
+        
+    case 'Average Total Speed'
+        pF.yLabel.String = 'Average Speed (mm/sec)';
+       
+    case 'Average Wake Speed'
         pF.yLabel.String = 'Wake Activity (mm/sec)';
-    end
+
 end
 
 % retrieves the panel object handle
@@ -382,9 +420,11 @@ else
         [i,hAxB{j}] = deal(ind(j),createSubPlotAxes(hP,[m,n],j));
                 
         % plots the background image
-        if (pP.pltDN)
-            fill(xFillD(ix),yFill(iy),'y','FaceAlpha',fAlpha','tag','hDN')
-            fill(xFillN(ix),yFill(iy),'k','FaceAlpha',fAlpha','tag','hDN')        
+        if pP.pltDN
+            fill(xFillD(ix),yFill(iy),'y','FaceAlpha',fAlpha',...
+                'tag','hDN','HitTest','off')
+            fill(xFillN(ix),yFill(iy),'k','FaceAlpha',fAlpha',...
+                'tag','hDN','HitTest','off')
         end      
 
         % creates the bar graph/boxplot

@@ -10,6 +10,7 @@ pData.Name = 'Pre & Post Stimuli Speed Comparison';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 3 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -92,7 +93,7 @@ a = {'1 - Scatterplot','2 - Metrics'};
 pP(1) = setParaFields(a{2},'List',{1,pList},'pType','Plot Type');
 pP(2) = setParaFields(a{1},'Number',6,'mSize','Plot Marker Size',[1 20 1]);
 pP(3) = setParaFields(a{2},'Number',0.8,'pW','Bar Graph Relative Width',[0 1 false],{1,1});
-pP(4) = setParaFields(a{2},'Boolean',1,'grpTime','Group Data By Time Group');
+pP(4) = setParaFields(a{2},'Boolean',0,'grpType','Group Data By Time Epoch');
 pP(5) = setParaFields(a{2},'Boolean',1,'plotErr','Show Error Bars/Outliers');
 pP(6) = setParaFields(a{1},'Boolean',0,'plotPolar','Plot Polar Coordinates');
 pP(7) = setParaFields(a{1},'Boolean',1,'addTrend','Add Regression Line & Equation',[],{6,1});
@@ -141,6 +142,82 @@ oP = addXVarField(oP,'Time Group','Tgrp','Group');
 oP = addYVarField(oP,'Pre-Stim Spd','V1',Stats,Type,{'Tgrp'},1);
 oP = addYVarField(oP,'Post-Stim Spd','V2',Stats,Type,{'Tgrp'},1);
 oP = addYVarField(oP,'Speed Ratio','M',Stats,Type,{'Tgrp'},1);
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(~,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% field retrievals
+iAx = min(3,dcObj.getSelectAxesIndex);
+pP = retParaStruct(dcObj.pData.pP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% sets the common class fields
+dcObj.grpName = dcObj.pData.appName;
+
+% retrieves the currently selected axes index
+if iAx == 1
+    % case is the pre/post-stimuli speed scatterplot                
+    
+    % case is the bar graph plot types
+    dcObj.pType = 'Scatterplot'; 
+    dcObj.xName = 'Pre-Stimuli Speed';
+    dcObj.xName2 = 'Time Group';
+    dcObj.yName = 'Post-Stimuli Speed';    
+    dcObj.xGrp = dcObj.plotD{1}(1).Tgrp(sP.pT);    
+    [dcObj.xUnits,dcObj.yUnits] = deal('mm/sec');    
+    
+else
+    % case is the bar graph plot types    
+    
+    % cell array fields
+    Tgrp = dcObj.plotD{1}(1).Tgrp(sP.pT);
+    yUnits = {'unitless','mm/sec'};
+    pMet = {'Gradient','Average Speed'};
+    
+    % sets up the data cursor string type (based on plot type)
+    if strcmp(pP.pType,'Bar Graph')
+        % case is plotting bar graphs
+        pType = {'Bar Graph','Multi-Bar Graph'};
+    else
+        % case is plotting boxplots
+        pType = {'Boxplot','Multi-Boxplot'};        
+    end
+    
+    % sets the data-cursor fields for the subplot
+    dcObj.pType = pType{iAx-1};    
+    dcObj.yName = pMet{iAx-1};
+    dcObj.yUnits = yUnits{iAx-1};            
+    [dcObj.xUnits,dcObj.yGrp] = deal([]);
+    
+    % sets the graph dependent fields
+    if iAx == 3
+        % case is the pre/post-stimuli average speeds
+        
+        % initialisations
+        sType = {'Pre-Stimuli','Post-Stimuli'};
+        [tStr,sStr] = deal('Time Group','Time Epoch');        
+        
+        % sets the primary/secondary x-value names/values
+        if pP.grpType
+            % case is the data is grouped by time-groups
+            [dcObj.xName,dcObj.xName2] = deal(sStr,tStr);
+            [dcObj.xGrp,dcObj.xGrp2] = deal(sType,Tgrp);
+        else
+            % case is the data is grouped by pre/post-stimuli
+            [dcObj.xName,dcObj.xName2] = deal(tStr,sStr);            
+            [dcObj.xGrp,dcObj.xGrp2] = deal(Tgrp,sType);
+        end
+    else
+        % sets the x-value name/values
+        [dcObj.xName,dcObj.xGrp] = deal('Time Group',Tgrp);
+    end
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
@@ -237,9 +314,9 @@ for i = 1:nExp
                 
         % calculates the pre/post stimuli velocities for all flies, and
         % bins the values according to their time group bin
-        for j = 1:nApp                
+        for j = 1:nApp
             % calculates the pre-stimuli velocities   
-            if (~isempty(snTot(i).Px{j}))
+            if ~isempty(snTot(i).Px{j})
                 V1 = calcBinnedFlyMovement(snTot(i),Ttot,indV1,cP,j,flyok{j},1);
                 V1 = cell2mat(cellfun(@(x)(x/tBefore),V1,'un',0));
                                 
@@ -257,7 +334,7 @@ end
 
 % sets the final pre/post stimuli event velocities (for each apparatus)
 for i = 1:nApp            
-    if (~all(cellfun('isempty',plotD(i).V1(:))))
+    if ~all(cellfun('isempty',plotD(i).V1(:)))
         % sets/calculates the plot values
         plotD(i).M = cellfun(@(x,y)((x./y)),plotD(i).V2,plotD(i).V1,'un',0);
         
@@ -306,10 +383,9 @@ if isempty(iPlotT); return; end
 
 % sets the parameters from the data structs
 p = plotD{1}(sP.pInd);
-nGrp = str2double(cP.nGrp);
 
 % determines if the group count field and calculated values match
-if length(p.Tgrp) ~= nGrp
+if length(p.Tgrp) ~= str2double(cP.nGrp)
     % if not then output an error message to screen
     mStr = sprintf(['Error! The calculated and selected daily ',...
                     'time groups do not match. You will need to ',...
@@ -322,7 +398,10 @@ if length(p.Tgrp) ~= nGrp
 end
 
 % other parameters
-xi = 1:nGrp;
+hLg = [];
+nGrp = length(iPlotT);
+nGrpT = str2double(cP.nGrp);
+[xi,Ymax] = deal(1:nGrp,500);
 isBar = strcmp(pP.pType,'Bar Graph');
 [c,mm,lWid,nTick,pWL] = deal('rk','+o*xsd^v><ph',2,6,0.85);
 
@@ -358,10 +437,17 @@ hold(hAx,'on');
 set(hAx,'Units','Normalized','box','on')
 
 % creates the bar graph/boxplot figures
-[hPlot,xTick] = plotDoubleBarBoxMetrics(hAx,p,{'V1','V2'},pP);      
+[hPlot,xTick] = plotDoubleBarBoxMetrics(hAx,p,{'V1','V2'},pP,iPlotT);
 
 % creates the subplot legend
-if pP.grpTime
+if pP.grpType
+    % resets the legend/x-axis tick labels
+    pF.Legend.String = lStr1(iPlotT);  
+    if isBar; xTick = [1 2]; end           
+    
+    % updates the graph properties
+    set(hAx,'xTick',xTick,'xticklabel',lStr2)               
+else
     % resets the legend/x-axis tick labels
     [pF.Legend.String,pF.Legend.lgHorz] = deal(lStr2,true);      
     if isBar
@@ -374,21 +460,16 @@ if pP.grpTime
     end    
     
     % updates the graph properties
-    set(hAx,'xlim',xLim + 0.5*[-1 1])    
-else
-    % resets the legend/x-axis tick labels
-    pF.Legend.String = lStr1;  
-    if isBar; xTick = [1 2]; end           
-    
-    % updates the graph properties
-    set(hAx,'xTick',xTick,'xticklabel',lStr2)               
+    set(hAx,'xlim',xLim + 0.5*[-1 1])        
 end
 
 % updates the axis properties
 formatPlotAxis(hAx,pF,2); 
 
 % creates the legend object
-hLg = createLegendObj(hPlot,pF.Legend);
+if ~pP.grpType || (nGrp > 1)
+    hLg = createLegendObj(hPlot,pF.Legend);
+end
     
 % turns the grid on (if specified)
 if pP.plotGrid; set(hAx,'ygrid','on'); end
@@ -396,14 +477,27 @@ if pP.plotGrid; set(hAx,'ygrid','on'); end
 % sets the 
 if pP.plotFixedY
     % determines the maximum y-axis extent over all apparatus
+    pp = plotD{1};    
     if isBar
-        V1mx = max(cellfun(@(x,y)(detOverallLimit(x+y)),field2cell(...
-                            plotD{1},'V1_mn'),field2cell(plotD{1},'V1_sem')));
-        V2mx = max(cellfun(@(x,y)(detOverallLimit(x+y)),field2cell(...
-                            plotD{1},'V2_mn'),field2cell(plotD{1},'V2_sem')));
-    else
-        V1mx = max(cellfun(@(x)(detOverallLimit(x)),field2cell(plotD{1},'V1')));
-        V2mx = max(cellfun(@(x)(detOverallLimit(x)),field2cell(plotD{1},'V2')));
+        % retrieves and reduces down the data arrays
+        V1mn = cellfun(@(x)(x(:,iPlotT)),field2cell(pp,'V1_mn'),'un',0);
+        V1sem = cellfun(@(x)(x(:,iPlotT)),field2cell(pp,'V1_sem'),'un',0);
+        V2mn = cellfun(@(x)(x(:,iPlotT)),field2cell(pp,'V2_mn'),'un',0);
+        V2sem = cellfun(@(x)(x(:,iPlotT)),field2cell(pp,'V2_sem'),'un',0);        
+        
+        % determines the overall maxima
+        V1mx = max(cellfun(@(x,y)(detOverallLimit(x+y)),V1mn,V1sem));
+        V2mx = max(cellfun(@(x,y)(detOverallLimit(x+y)),V2mn,V2sem));
+    else        
+        % retrieves and reduces down the data arrays
+        V1 = cellfun(@(x)(cellfun(@(y)...
+            (y(:,iPlotT)),x,'un',0)),field2cell(pp,'V1'),'un',0);
+        V2 = cellfun(@(x)(cellfun(@(y)...
+            (y(:,iPlotT)),x,'un',0)),field2cell(pp,'V2'),'un',0);
+        
+        % determines the overall maxima
+        V1mx = max(cellfun(@(x)(detOverallLimit(x)),V1));
+        V2mx = max(cellfun(@(x)(detOverallLimit(x)),V2));
     end
                         
     % sets the axis limits for the two speed comparison subplots
@@ -414,48 +508,53 @@ end
 resetAxesPos(hAx,1,1);
 
 % resets the location of the legend object
-[axP,lgP] = deal(get(hAx,'position'),get(hLg,'position'));
-if (pP.grpTime)
-    % case is that time is being grouped
-    lgP(1) = axP(1) + 0.5*(axP(3)-lgP(3));
-    lgP(2) = sum(axP([2 4]));
-    set(hLg,'position',lgP);
-else
-    % case is that time is not being grouped
-    lgP(2) = axP(2) + 0.5*(axP(4)-lgP(4));
-    set(hLg,'position',lgP)    
-    
-    %
-    if isBar
-        hErr = findall(hAx,'tag','hErr');                
-        cSzNw = hErr(1).CapSize*(axP(3)-pWL*lgP(3))/axP(3);
+if ~isempty(hLg)
+    [axP,lgP] = deal(get(hAx,'position'),get(hLg,'position'));
+    if pP.grpType
+        % case is that time is not being grouped
+        lgP(2) = axP(2) + 0.5*(axP(4)-lgP(4));
+        set(hLg,'position',lgP)
         
-        for i = 1:length(hErr)
-            hErr(i).CapSize = cSzNw;
+        %
+        if isBar && pP.plotErr
+            hErr = findall(hAx,'tag','hErr');
+            cSzNw = hErr(1).CapSize*(axP(3)-pWL*lgP(3))/axP(3);
+            
+            for i = 1:length(hErr)
+                hErr(i).CapSize = cSzNw;
+            end
         end
-    end    
-    
-    % resets the position of the axis
-    resetObjPos(hAx,'width',-lgP(3),1)    
+        
+        % resets the position of the axis
+        resetObjPos(hAx,'width',-lgP(3),1)
+    else
+        % case is that time is being grouped
+        lgP(1) = axP(1) + 0.5*(axP(3)-lgP(3));
+        lgP(2) = sum(axP([2 4]));
+        set(hLg,'position',lgP);        
+    end
 end
 
 % adds the x-axis labels 
-if pP.grpTime; setGroupString(hAx,pF,xi,lStr1,-90); end
+if ~pP.grpType
+    setGroupString(hAx,pF,xi,lStr1(iPlotT),-90)
+end
 
-% ----------------------------------------- %
-% --- AVERAGE SPEED VS PRE/POST STIMULI --- %
-% ----------------------------------------- %
+% --------------------------------------------- %
+% --- POST/PRE-STIMULI SPEED RATIO VS GROUP --- %
+% --------------------------------------------- %
 
 % sets up the sub-plot
 hAx2 = createSubPlotAxes(hP,[2,2],2); 
 hold(hAx2,'on');
 
 % creates the bar graph/boxplot
-yLim = plotBarBoxMetrics(hAx2,1:nGrp,p,'M',pP,[]);             
-    
+% yLim = plotBarBoxMetrics(hAx2,1:nGrp,p,'M',pP,[]);             
+yLim = plotBarBoxMetrics(hAx2,iPlotT(:)',p,'M',pP,[]);     
+
 % updates the axis properties
 pF.yLabel(3).String = 'Gradient (Unitless)';
-set(hAx2,'xtick',get(hAx,'xtick'),'xticklabel',[],...
+set(hAx2,'xtick',1:nGrp,'xticklabel',[],...
          'xLim',[1 nGrp]+0.5*[-1 1],'box','on')        
     
 % formats the axis plot
@@ -467,22 +566,31 @@ if pP.plotGrid; set(hAx2,'ygrid','on'); end
 % sets the 
 if pP.plotFixedY
     % determines the maximum y-axis extent over all apparatus
-    if (isBar)
-        Mmx = max(cellfun(@(x,y)(detOverallLimit(x+y)),field2cell(...
-                            plotD{1},'M_mn'),field2cell(plotD{1},'M_sem')));
+    if isBar
+        % retrieves and reduces down the data arrays
+        Mmn = cellfun(@(x)(x(:,iPlotT)),field2cell(pp,'M_mn'),'un',0);
+        Msem = cellfun(@(x)(x(:,iPlotT)),field2cell(pp,'M_sem'),'un',0);        
+        
+        % determines the overall maxima
+        Mmx = max(cellfun(@(x,y)(detOverallLimit(x+y)),Mmn,Msem));
     else
-        Mmx = max(cellfun(@(x)(detOverallLimit(x)),field2cell(plotD{1},'M')));
+        % retrieves and reduces down the data arrays
+        M = cellfun(@(x)(cellfun(@(y)...
+            (y(:,iPlotT)),x,'un',0)),field2cell(pp,'M'),'un',0);
+        
+        % determines the overall maxima                
+        Mmx = max(cellfun(@(x)(detOverallLimit(x)),M));
     end                      
     
     % sets the axis limits for the two speed comparison subplots
-    if (Mmx > 500)        
+    if Mmx > Ymax
         set(hAx2,'ylim',[0 Mmx],'yscale','log');
     else    
         setStandardYAxis(hAx2,[],nTick,Mmx);        
     end
 else
     % determines if the y-axis scale is extremely large
-    if (max(get(hAx2,'ylim')) > 500)
+    if max(get(hAx2,'ylim')) > Ymax
         % if so, then use a log scale
         set(hAx2,'yscale','log');
     else
@@ -499,11 +607,11 @@ resetObjPos(hAx2,'height',-0.030,1);
 % resets the axis dimensions so that match the last sub-plot
 dL = retObjDimPos(hAx2,1,1) - retObjDimPos(hAx,1,1);
 resetObjPos(hAx2,'left',retObjDimPos(hAx,1,1));
-if (pP.grpTime)    
-    resetObjPos(hAx2,'width',retObjDimPos(hAx,3,1));    
-else
+if pP.grpType
     resetObjPos(hAx2,'width',dL,1);
-    setGroupString(hAx2,pF,1:nGrp,lStr1,-90); 
+    setGroupString(hAx2,pF,xi,lStr1(iPlotT),-90);    
+else
+    resetObjPos(hAx2,'width',retObjDimPos(hAx,3,1));        
 end
 
 % pause for update...
@@ -517,7 +625,7 @@ pause(0.05);
 hPlot = zeros(nGrp,1);
 
 % creates a new subplot
-hAxM = subplot(2,2,3,'Parent',hP); 
+hAxM = subplot(1,2,1,'Parent',hP,'UserData',1); 
 hold(hAxM,'on');
 axis(hAxM,'off');
 
@@ -527,42 +635,57 @@ V2 = cellfun(@(x)(mean(x,1,'omitnan')),p.V2,'un',0);
 [V1,V2] = deal(V1(~cellfun('isempty',V1(:))),V2(~cellfun('isempty',V2(:))));
 [V1,V2] = deal(cell2mat(V1(:)),cell2mat(V2(:)));
 
-%
-if (pP.plotPolar)
-    D = sqrt(V1.^2 + V2.^2);
-    Phi = atan2(V1,V2)*(180/pi);    
+% sets up the polar coordinate values (if plotting in polar coords)
+if pP.plotPolar
+
 end
 
 % loops through all the time groups plotting the speeds
-for j = 1:nGrp
-    if (sP.pT(j))
-        [ii,jj] = deal(mod(j-1,ceil(nGrp/2))+1,floor((j-1)/ceil(nGrp/2))+1);
-        if (~all(isnan(V1(:,j))))
-            if (pP.plotPolar)
-                [xPlt,yPlt] = deal(Phi(:,j),D(:,j));
-            else
-                [xPlt,yPlt] = deal(V1(:,j),V2(:,j));
+for i = 1:length(iPlotT)
+    % determines the row/column index
+    j = iPlotT(i);
+    [ii,jj] = deal(mod(i-1,ceil(nGrp/2))+1,floor((i-1)/ceil(nGrp/2))+1);
+
+    % plots the values (if any exist)
+    if ~all(isnan(V1(:,j)))
+        % sets up the x/y plot values
+        if pP.plotPolar
+            % calculates the distance/angles (first iteration only)
+            if i == 1
+                D = sqrt(V1.^2 + V2.^2);
+                Phi = atan2(V1,V2)*(180/pi);
             end
             
-            % sets the plot values
-            hPlot(j) = plot(hAxM,xPlt,yPlt,[c(jj),mm(ii)],'markersize',pP.mSize);                    
+            [xPlt,yPlt] = deal(Phi(:,j),D(:,j));
+        else
+            [xPlt,yPlt] = deal(V1(:,j),V2(:,j));
         end
+        
+        % creates the scatterplot
+        cmStr = [c(jj),mm(ii)];
+        hPlot(i) = plot(hAxM,xPlt,yPlt,cmStr,...
+            'Markersize',pP.mSize,'UserData',i);
     end
 end    
 
-% % updates the plot axis limits
-if (pP.plotPolar)    
+% updates the plot axis limits
+if pP.plotPolar
     set(hAxM,'xlim',[0 90],'box','on')    
 else
+    % retrieves the pre/post-stimuli speeds
     [V1T,V2T] = field2cell(plotD{1},{'V1','V2'});    
     if pP.plotFixedY   
         % determines the max mean V1 values
+        V1T = cellfun(@(x)(cellfun(@(y)...
+                        (y(:,iPlotT)),x,'un',0)),V1T,'un',0);
         V1Tmn = cellfun(@(y)(cellfun(@(x)...
                         (mean(x,1,'omitnan')),y(:),'un',0)),V1T,'un',0);
         V1Tmn = cellfun(@(y)(max...
                         (max(cell2mat(y(~cellfun('isempty',y)))))),V1Tmn);
         
         % determines the max mean V2 values
+        V2T = cellfun(@(x)(cellfun(@(y)...
+                        (y(:,iPlotT)),x,'un',0)),V2T,'un',0);
         V2Tmn = cellfun(@(y)(cellfun(@(x)...
                         (mean(x,1,'omitnan')),y(:),'un',0)),V2T,'un',0);
         V2Tmn = cellfun(@(y)(max...
@@ -572,12 +695,17 @@ else
         VLim0 = [detOverallLimit(V1Tmn),detOverallLimit(V2Tmn)];
         YmxNw = detOverallLimit(VLim0);
     else
-        YmxNw = detOverallLimit([max(V1(:)),max(V2(:))]);
+        V1mx = max(arr2vec(V1(:,iPlotT)));
+        V2mx = max(arr2vec(V2(:,iPlotT)));
+        YmxNw = detOverallLimit([V1mx,V2mx]);
     end
     
     % sets the axis limits so that they are square
     set(hAxM,'xlim',[0 YmxNw],'ylim',[0 YmxNw],'box','on') 
 end      
+
+% turns the grid on (if specified)
+if pP.plotGrid; grid(hAxM,'on'); end
 
 % updates the axis properties
 formatPlotAxis(hAxM,pF,1); 
@@ -589,19 +717,24 @@ resetObjPos(hAxM,'left',-0.15*hPos(3),1)
 resetObjPos(hAxM,'width',0.20*hPos(3),1)                
     
 % plots the gradient lines (if specified)
-if (pP.addTrend)
+if pP.addTrend
     % calculates the font-size ratio
     fR = max(0.8,min(newSz(3:4)./regSz(3:4))*get(0,'ScreenPixelsPerInch')/72);
     fSzT = setMinFontSize(pF.Axis(1).Font.FontSize*fR,'text');
     
     % calculates the linear fits to the lines
     [M_mn,CI,R2] = calcLinearFit(V1,V2);    
-    [xLim,yLim] = deal(get(hAxM,'xlim'),get(hAxM,'ylim'));
+    xLim = get(hAxM,'xlim');
 
     % plots the values
-    plot(hAxM,xLim,M_mn*xLim,'g','linewidth',lWid)
-    plot(hAxM,xLim,CI(1)*xLim,'g--','linewidth',lWid)
-    plot(hAxM,xLim,CI(2)*xLim,'g--','linewidth',lWid)        
+    hPltT = [plot(hAxM,xLim,M_mn*xLim,'g','linewidth',lWid),...
+             plot(hAxM,xLim,CI(1)*xLim,'g--','linewidth',lWid),...
+             plot(hAxM,xLim,CI(2)*xLim,'g--','linewidth',lWid)];
+    arrayfun(@(x)(set(x,'HitTest','off')),hPltT);  
+    
+    % resets the order of the marker/lines
+    hPltM = setdiff(get(hAxM,'Children'),hPltT);
+    set(hAxM,'Children',[hPltM(:);hPltT(:)])
     
     % sets the new text label
     nwText = [{sprintf('Gradient = %.2f %s %.2f',M_mn,'\pm',diff(CI)/2)};...
@@ -610,23 +743,26 @@ if (pP.addTrend)
                  'bold','FontSize',fSzT,'HorizontalAlignment','center',...
                  'parent',hAxM,'tag','Other');
     
+    % resets the position of the text object
     [tExt,dX] = deal(get(hText,'Extent'),0.025*diff(xLim));
-    set(hText,'position',[xLim(2)-(dX+tExt(3)/2),2*tExt(4)/3,0],'Units','Normalized')    
+    pText = [xLim(2)-(dX+tExt(3)/2),2*tExt(4)/3,0];
+    set(hText,'position',pText,'Units','Normalized')    
 end
 
 % creates the legend
-if (nGrp > 1)
+if nGrpT > 1
     [dY,isOut] = deal(0.02,sP.pT' & ~all(isnan(V1),1));
-    if (sum(isOut) == 1)
+    if sum(isOut) == 1
         % only one valid time group
-        hLg = legend(hPlot(isOut),lStr1(isOut),'location','NorthOutside');
+        hLg = legend(hPlot,lStr1(isOut),'location','NorthOutside');
         set(hLg,'box','off')
     else
         % more than one valid time group
-        hLg = columnlegend(hPlot(isOut),2,lStr1(isOut),'location','NorthOutside');
+        hLg = columnlegend(hPlot,2,lStr1(isOut),'location','NorthOutside');
     end
 
     % resets the axis locations
+    set(hLg,'tag','hLgScatter')
     [axPos,lgPos] = deal(get(hAxM,'position'),get(hLg,'position'));
         
     % resets the legend position
@@ -635,13 +771,13 @@ if (nGrp > 1)
     set(hLg,'position',lgPos)
     
     % resets the axis height
-    axPos(4) = (lgPos(2) + lgPos(4)/2) - (axPos(2) + 4*dY);
+    axPos(4) = (lgPos(2) + lgPos(4)/2) - (axPos(2) + 3*dY);
     set(hAxM,'position',axPos)
 end
 
+% sets the final axes properties
 axis(hAxM,'on');
 setObjVisibility(hAx,'on')
-a = 1;
 
 % ----------------------------------------------------------------------- %
 % ---                         OUTPUT FUNCTION                         --- %

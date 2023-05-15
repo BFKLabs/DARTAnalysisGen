@@ -10,6 +10,7 @@ pData.Name = '2D Region Exploration';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 1 1 3];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)
@@ -90,6 +91,29 @@ oP = addYVarField(oP,'Exploration %age (SEM)','E_sem',[],Type2);
 oP = addYVarField(oP,'Exploration %age (Median)','E_md',[],Type2);
 oP = addYVarField(oP,'Exploration %age (Lower Quartile)','E_lq',[],Type2);
 oP = addYVarField(oP,'Exploration %age (Upper Quartile)','E_uq',[],Type2);
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+sP = retParaStruct(dcObj.pData.sP);
+
+% other initialisations
+grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the common class fields
+dcObj.pType = 'Boxplot';
+dcObj.yName = 'Outer Edge Crossings';
+dcObj.yUnits = 'crossings';
+dcObj.grpName = grpName;
+[dcObj.useGrpHdr,dcObj.combFig] = deal(false);
+[dcObj.xName,dcObj.xGrp] = deal('Group Name',grpName);
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %

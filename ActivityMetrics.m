@@ -10,6 +10,7 @@ pData.Name = 'Activity Metrics';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 2 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if nargin == 1
@@ -140,6 +141,40 @@ oP = addYVarField(oP,'Inter-Bout Interval (Median)','IBI_md',[],Type2,xDep1);
 oP = addYVarField(oP,'Inter-Bout Interval (Lower Quartile)','IBI_lq',[],Type2,xDep1);
 oP = addYVarField(oP,'Inter-Bout Interval (Upper Quartile)','IBI_uq',[],Type2,xDep1);
           
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(~,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+pP = retParaStruct(dcObj.pData.pP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% other initialisations
+grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the common class fields
+dcObj.yName = pP.pMet;
+dcObj.pType = 'Boxplot';
+dcObj.grpName = grpName;
+[dcObj.useGrpHdr,dcObj.combFig] = deal(false);
+[dcObj.xName,dcObj.xGrp] = deal('Group Name',grpName);
+
+% sets the metric specific fields
+switch pP.pMet
+    case 'Action Initiation'
+        % case is the action initiation
+        dcObj.yUnits = 'starts/sec';
+        
+    otherwise
+        % case is the other metrics
+        dcObj.yUnits = 'sec';
+end
+        
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -461,13 +496,15 @@ hAx = createSubPlotAxes();
 % set(hAx,'Units',get(get(hAx,'parent'),'Units'))
 
 % sets the plot values for the 
-switch (pP.pMet)
+switch pP.pMet
     case ('Action Initiation')
         [lStr,pStr] = deal({'Inner','Outer'},'AI');
         pF.yLabel.String = 'Initiation (Starts/sec)';
+    
     case ('Inter-Bout Interval')
         [lStr,pStr] = deal({'Inner','Outer'},'IBI');
         pF.yLabel.String = 'Duration (sec)';
+    
     case ('Mean Bout Length')        
         [lStr,pStr] = deal({'Inner','Outer','Transition'},'MBL');
         pF.yLabel.String = 'Duration (sec)';

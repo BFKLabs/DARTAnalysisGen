@@ -10,6 +10,7 @@ pData.Name = 'Stimuli Response (Short)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 2 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -209,7 +210,53 @@ oP = addYVarField(oP,'Inact Tau 2 (Mean)','kI2_mn',[],Type2,xDep2);
 oP = addYVarField(oP,'Inact Tau 2 (SEM)','kI2_sem',[],Type2,xDep2);
 oP = addYVarField(oP,'Max Response Time','Tmax',[],Type2,xDep2);
 oP = addYVarField(oP,'Signal GOF','gof',Stats2,[],xDep2);
-                         
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+cP = retParaStruct(dcObj.pData.cP);
+
+% field retrievals
+grpName = dcObj.pData.appName;
+iAx = dcObj.getSelectAxesIndex;
+uStr = {'mm/sec','R^2','mm/sec','mm/sec','min','min','min'};
+mStr = {'Speed','GOF','Amplitude','Pre-Stimuli Speed',...
+        'Response Time','Activation TC','Inactivation TC'};
+
+% incorporates the fields for the double-exponential field
+if cP.useDouble
+    mStr{end} = 'Fast Inactivation TC';
+    [uStr{end+1},mStr{end+1}] = deal('min','Slow Inactivation TC');
+end
+
+% sets the common class fields
+dcObj.xGrp = grpName;
+dcObj.yName = mStr{iAx};
+dcObj.yUnits = uStr{iAx};
+dcObj.combFig = false;
+dcObj.grpName = grpName;
+
+% sets up the axes specfic fields
+if iAx == 1
+    % case is the speed traces
+    dcObj.pType = 'Fitted Trace';  
+    dcObj.xName = 'Time';
+    dcObj.xUnits = 'sec';
+    
+else
+    % case is the metric bar graphs
+    dcObj.pType = 'Bar Graph';
+    dcObj.xName = 'Time Bin';
+    
+end    
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
+
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -497,7 +544,7 @@ cP = retParaStruct(pData.cP);
 pF = pData.pF;
 
 % determines the stimuli event count (based on whether they are grouped)
-if (isfield(cP,'grpStim'))
+if isfield(cP,'grpStim')
     grpStim = cP.grpStim;
 else
     grpStim = false;
@@ -505,7 +552,7 @@ end
 
 % if the stimuli grouping checkbox flag does not match the calculated data,
 % then output an error to screen and exit the function
-if (grpStim ~= plotD{1}(1).gType)
+if grpStim ~= plotD{1}(1).gType
     eStr = {'The stimuli separation flag does not match the calculated data.';'';...
             'Either toggle the separation flag checkbox or recalculate the data.'};
     waitfor(msgbox(eStr,'Invalid Parameter Selection','modal'))
@@ -518,14 +565,14 @@ end
 
 % sets the indices to be plotted
 [iPlotT,iPlotF] = deal(find(sP.pT),find(sP.pF));
-if (isempty(iPlotT) && isempty(iPlotF)); return; end
+if isempty(iPlotT) && isempty(iPlotF); return; end
 
 % sets the plot data struct
 p = resetPlotDataStruct(plotD{1},grpStim,sP.pInd);
 nApp = size(p.Y,2);
 
 % sets the group indices (based on the stimuli grouping type)
-if (grpStim)
+if grpStim
     % stimuli events separation selected
     iApp = sP.pInd;
 else
@@ -539,7 +586,7 @@ end
 % if the current data set is empty, then exit the function
 aok = any(cell2mat(cellfun(@(x)(field2cell(...
                 field2cell(x,'iMov',1),'ok')),num2cell(snTot))'),2);
-if (~any(aok(unique(iApp)))); return; end    
+if ~any(aok(unique(iApp))); return; end    
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -556,19 +603,19 @@ end
 
 % sets the main plot ylabel string and offset amount
 pF.yLabel(1).String = 'Speed (mm s^{-1})';
-if (pP.relSpeed)
+if pP.relSpeed
     yOfs = zeros(1,nApp);    
 else
     yOfs = p.Y0_mn;
 end    
     
 % sets the main plot ylabel string and offset amount
-if (useDouble)
+if useDouble
     pF.Title(7).String = '\tau_{Fast}';
 end
 
 % if the activation time constants are small, then convert to seconds
-if (all(p.kA_mn(~isnan(p.kA_mn(iApp))) < 5e-3))
+if all(p.kA_mn(~isnan(p.kA_mn(iApp))) < 5e-3)
     p.kA_mn = p.kA_mn*60;
     pF.yLabel(6).String = 'Time (sec)';        
 end
@@ -584,13 +631,14 @@ hP = getCurrentAxesProp('Parent');
 nSub = 6 + useDouble;
 
 % creates the main axes
-if (pP.incMet)
+if pP.incMet
     % creates the sub-plot axes
     hAxIns = cell(nSub,1);
-    for i = 1:nSub    
-        outerPos = calcOuterPos(2,nSub,i+nSub);
-        hAxIns{i} = axes('parent',hP,'Units','Normalized','linewidth',...
-                        1.5,'UserData',i,'OuterPosition',outerPos);
+    for i = 1:nSub
+        pPos = calcOuterPos(2,nSub,i+nSub);
+        hAxIns{i} = axes('parent',hP,'OuterPosition',pPos,...
+                         'Units','Normalized','linewidth',1.5,...
+                         'UserData',i+1);
     end
 end
 
@@ -612,7 +660,7 @@ else
 end
 
 % turns the hold on
-hAx = axes('OuterPosition',oPos,'parent',hP); 
+hAx = axes('OuterPosition',oPos,'parent',hP,'UserData',1); 
 hold(hAx,'on'); axis(hAx,'on')
 
 % determines the traces/fitted exponentials that are to be plotted
@@ -626,12 +674,12 @@ for i = 1:length(iPlotT)
     [Tplt,Yplt] = deal(p.T/60,p.Y_rel(:,j)+yOfs(j));
     
     % adds the error bar trace (if selected)
-    if (pP.plotErr)
+    if pP.plotErr
         plotSignalSEM(Yplt,p.Y_sem(:,j),Tplt,col{j})        
     end    
     
     % creates the plot
-    hPlot{j} = plot(Tplt,Yplt,'color',col{j});    
+    hPlot{j} = plot(Tplt,Yplt,'color',col{j},'UserData',i,'Tag','hRaw');   
 end
 
 % plots the fitted exponential traces
@@ -641,29 +689,32 @@ for i = 1:length(iPlotF)
     Yplt = p.Y_fit(:,j)+yOfs(j);
     
     % creates the plot
-    hPlot{j} = plot(p.T/60,Yplt,'color',col{j},'linewidth',2);
+    hPlot{j} = plot(p.T/60,Yplt,'color',col{j},...
+        'linewidth',2,'UserData',i,'Tag','hFit');
 end
 
 % plots the gridlines (if required)
 formatPlotAxis(hAx,pF,1);
-if (pP.plotGridT)
+if pP.plotGridT
     grid(hAx,'on')
 end
 
 % sets the axis properties (based on the plot type)
 xLim = roundP(p.T([1 end])/60);
 set(hAx,'xlim',xLim,'linewidth',1.5,'box','on'); 
-if (pP.relSpeed); plot(hAx,xLim,[0 0],'r--','linewidth',1.5); end 
+if pP.relSpeed
+    plot(hAx,xLim,[0 0],'r--','linewidth',1.5,'HitTest','off'); 
+end 
 
 % plots the stimuli marker (ensures minimum is at 0)
 yL = get(hAx,'ylim'); yL(1) = min(yL(1),0); 
-plot(hAx,[0 0],yL,'r--','linewidth',1.5,'tag','hStim')
+plot(hAx,[0 0],yL,'r--','linewidth',1.5,'tag','hStim','HitTest','off')
 
 % if not plotting the metrics, then exit the function
-if (~pP.incMet)                           
+if ~pP.incMet
     % creates the legend object using the formatting data struct    
     ii = ~cellfun('isempty',hPlot);
-    if (any(ii) && (nApp > 1))
+    if any(ii) && (nApp > 1)
         % sets the legend strings
         pF.Legend.String = cellfun(@(x,y)(sprintf('%s (N = %i)',x,y)),...
                  arr2vec(lStr(ii)),arr2vec(num2cell(p.Hist(ii))),'un',0);
@@ -699,7 +750,7 @@ pD = plotD{1}(~cellfun('isempty',field2cell(plotD{1},'Y')));
 pAx(1) = pAx(3)*(xLim(1)-pLbl(1))/diff(xLim);
 
 % plots the inset metrics (if selected)
-if (pP.incMet)
+if pP.incMet
     % sets the parameter strings
     pStr = {'gof','Yamp_mn','Y0_mn','Tmax','kA','kI1','kI2'};
     if (pP.plotRaw); pStr{2} = 'YampR_mn'; end
@@ -715,7 +766,8 @@ if (pP.incMet)
         
         % creates the bars for each of the plot values
         for j = 1:nApp
-            bar(hAxIns{i},j,Ynw(j),'facecolor',col{j},'tag','hBar','UserData',j)
+            bar(hAxIns{i},j,Ynw(j),...
+                'facecolor',col{j},'tag','hBar','UserData',j)
         end            
 
         % sets the axis labels
@@ -723,6 +775,7 @@ if (pP.incMet)
                       'xlim',[1 nApp] + 0.5*[-1.05 1.05])        
                 
         % formats the plot axis
+        set(gcf,'CurrentAxes',hAxIns{i});
         pF.xLabel(i+1).String = pF.Axis(i+1).String;
         formatPlotAxis(hAxIns{i},pF,1+i);      
         set(hAxIns{i},'xtick',nApp/2+0.5)
@@ -746,7 +799,7 @@ if (pP.incMet)
     end    
     
     % creates the legend object
-    if (nApp > 1)
+    if nApp > 1
         % sets the legend strings
         pF.Legend.String = cellfun(@(x,y)(sprintf('%s (N = %i)',x,y)),...
                             lStr(:),num2cell(p.Hist(:)),'un',0);                     

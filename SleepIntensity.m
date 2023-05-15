@@ -11,6 +11,7 @@ pData.Name = 'Sleep Intensity (Stimuli Response)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [2 2 3 1];
 pData.rI = initFuncReqInfo(pData);
+pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
 if (nargin == 1)    
@@ -110,7 +111,7 @@ a = {'1 - General','2 - Stimuli Response','3 - Histograms'};
 
 % sets the parameter fields
 pP(1) = setParaFields(a{1},'List',{1,pList},'pMet','Figure Plot Type',[],{{{'SR'},{'SP'}},{1,2}});
-pP(2) = setParaFields(a{1},'Number',0.75,'pW','Metric Bar Plot Relative Width',[0 1 false]);
+pP(2) = setParaFields(a{1},'Number',0.9,'pW','Metric Bar Plot Relative Width',[0 1 false]);
 pP(3) = setParaFields(a{1},'Boolean',0,'plotGrid','Show Axes Gridlines');
 pP(4) = setParaFields(a{2},'List',{1,pListGOF},'gofType','Goodness-of-fit Type',[],{1,1});
 pP(5) = setParaFields(a{2},'Boolean',0,'plotErrorS','Plot Stimuli Response SEM',[],{1,1});
@@ -119,7 +120,7 @@ pP(7) = setParaFields(a{2},'Boolean',1,'plotFixedS','Fix Signal Limit To Overall
 pP(8) = setParaFields(a{2},'Boolean',1,'plotFixedH','Fix Metric Limit To Overall Maximum',[],{1,1});
 pP(9) = setParaFields(a{2},'Boolean',1,'showGOF','Show GOF Statistics',[],{1,1});
 pP(10) = setParaFields(a{3},'List',{1,pListH},'pMetH','Histogram Plot Metrics',[],{1,2});
-pP(11) = setParaFields(a{3},'Boolean',0,'groupType','Group Histograms By Type',[],{1,2});
+pP(11) = setParaFields(a{3},'Boolean',0,'grpType','Group Histograms By Type',[],{1,2});
 
 % --- initialises the plot formatting data struct --- %
 function pF = initPlotFormat(snTot,Type)
@@ -228,6 +229,113 @@ oP = addYVarField(oP,'Inact Tau 2 (Mean)','kI2_mn',[],Type3,xDep2);
 oP = addYVarField(oP,'Inact Tau 2 (SEM)','kI2_sem',[],Type3,xDep2);
 oP = addYVarField(oP,'Max Response Time','Tmax',[],Type3,xDep2);
 oP = addYVarField(oP,'Signal GOF','gof',Stats3,[],xDep2);
+
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(hObj,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+Tgrp = dcObj.plotD{1}(1).Tgrp;
+pP = retParaStruct(dcObj.pData.pP);
+cP = retParaStruct(dcObj.pData.cP);
+sType = {'Day Activity','Night Activity'};
+[tStr,sStr] = deal('Bin Size','Temporal Activity');
+
+% sets the specific metric class fields
+switch pP.pMet
+    case 'Stimuli Response'
+        % case is the stimuli response metrics
+        
+        % field retrievals
+        iAx = dcObj.getSelectAxesIndex;
+        uStr = {'mm/sec','unitless','mm/sec','min','min'};
+        mStr = {'Speed','GOF','Amplitude','Activation TC','Inactivation TC'};
+
+        % removes the GOF field (if not being shown)
+        if ~pP.showGOF
+            ii = ~setGroup(2,size(uStr));
+            [uStr,mStr] = deal(uStr(ii),mStr(ii));
+        end
+        
+        % incorporates the fields for the double-exponential field
+        if cP.useDouble
+            mStr{end} = 'Fast Inactivation TC';
+            [uStr{end+1},mStr{end+1}] = deal('min','Slow Inactivation TC');
+        end
+        
+        % sets the common class fields
+        dcObj.yName = mStr{iAx};
+        dcObj.yUnits = uStr{iAx};
+        dcObj.grpName = dcObj.pData.appName;
+        
+        % sets up the axes specfic fields
+        if iAx == 1
+            % case is the average speed trace
+
+            % sets the histogram class fields
+            dcObj.xName = 'Time';
+            dcObj.xName2 = 'Bin Size';            
+            dcObj.xUnits = 'sec';
+            dcObj.xUnits2 = 'min';            
+            dcObj.pType = 'Multi-Fitted Trace'; 
+            [dcObj.xGrp,dcObj.xGrp2] = deal(Tgrp,sType);
+            
+        else
+            % case is the other metrics
+
+            % sets the histogram class fields
+            dcObj.xGrp = sType;
+            dcObj.xName = 'Time Bin';
+            dcObj.pType = 'Multi-Bar Graph';
+
+            % case is the data is grouped by time-groups
+            [dcObj.xName,dcObj.xName2] = deal(sStr,tStr);
+            [dcObj.xGrp,dcObj.xGrp2] = deal(sType,Tgrp);            
+            
+        end
+        
+    case 'Sleep Intensity Histograms'
+        % case is the sleep intensity histograms
+        
+        % sets the histogram class fields
+        dcObj.yName = pP.pMetH;
+        dcObj.xName = 'Time Bin';
+        dcObj.pType = 'Multi-Bar Graph';
+        
+        % sets the y-metric units
+        switch pP.pMetH
+            case 'Histogram Count'
+                % case is the histogram count
+                dcObj.yUnits = 'count';
+                
+            case 'Reaction Proportion'
+                % case is the reaction proportion
+                dcObj.yUnits = '%';
+        end
+        
+        % initialisations
+        grpName = dcObj.pData.appName;        
+        
+        % sets the x-metric fields (based on grouping type)
+        if pP.grpType
+            % case is the data is grouped by day/night activity
+            dcObj.grpName = sType;
+            [dcObj.xName,dcObj.xName2] = deal(tStr,'Group Name');
+            [dcObj.xGrp,dcObj.xGrp2] = deal(Tgrp,grpName);
+            
+        else
+            % case is the data is grouped by time-groups
+            dcObj.grpName = grpName;
+            [dcObj.xName,dcObj.xName2] = deal(tStr,sStr);
+            [dcObj.xGrp,dcObj.xGrp2] = deal(Tgrp,sType);
+        end
+        
+end
+
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();
 
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
@@ -466,7 +574,7 @@ pF.Title(1).String = sprintf('%s (%s)',pF.Title(1).String,grpStr);
 % ----------------------- %
 
 % creates the figure based on the type
-switch (pP.pMet)
+switch pP.pMet
     case ('Stimuli Response')
         pF = initPlotFormat([],1);
         createStimResFig(hP,plotD{1},cP,pP,sP,pF);
@@ -484,11 +592,11 @@ sepDN = size(plotD(1).Pr_P,1) == 2;
 % if the incorrect combination is used, then exit with an error (not
 % possible to plot the day/night separation and combined histograms
 % together)
-if (strcmp(pP.pMetH,'Combined Histograms') && (sepDN))
+if strcmp(pP.pMetH,'Combined Histograms') && sepDN
     eStr = 'Not possible to plot the Combined Histograms with Day/Night Separation';
     waitfor(msgbox(eStr,'Incorrect Plot Format','modal'))
     return
-elseif (strcmp(pP.pMetH,'Combined Histograms') && (pP.groupType))
+elseif strcmp(pP.pMetH,'Combined Histograms') && pP.grpType
     eStr = 'Not possible to plot the Combined Histograms with Type Grouping';
     waitfor(msgbox(eStr,'Incorrect Plot Format','modal'))
     return    
@@ -514,9 +622,9 @@ col = 'yk';
 % ---------------------------------------- %
 
 % retrieves the formatting struct
-if (isempty(m))
+if isempty(m)
     szMx = 1;
-elseif (pP.groupType)
+elseif pP.grpType
     szMx = ceil(length(sP.Sub.isPlot)/2);
     pF.Legend.String = pData.appName(ind);
     [ind,n] = deal(1:(1+cP.sepDN),1);
@@ -539,12 +647,12 @@ pF.yLabel.String = 'Frequency';
 % ----------------------- %
 
 % plots the histograms for each of the apparatus
-if (pP.groupType)
+if pP.grpType
     % memory allocation
     hAx = cell(1+sepDN,1);
     
     % sets the title strings based on the calculation type
-    if (sepDN)
+    if sepDN
         % case is day/night separation
         pF.Title = repmat(pF.Title,[1,2]);
         pF.Title(1).String = 'Day Activity';
@@ -564,7 +672,7 @@ if (pP.groupType)
         hold(hAx{i},'on');
         HistNw = cell2mat(cellfun(@(x)(x(i,:)),N,'un',0))';                
 
-        switch (pP.pMetH)
+        switch pP.pMetH
             case ('Histogram Count') 
                 [yLim,Yplt,Ysem] = deal([0 detOverallLimit(N)],HistNw,[]);   
             case ('Reaction Proportion')                    
@@ -583,7 +691,7 @@ if (pP.groupType)
         formatPlotAxis(hAx{i},pF,i,1);       
          
         % turns the grid on (if specified)
-        if (pP.plotGrid); set(hAx{i},'ygrid','on','yminorgrid','on'); end                       
+        if pP.plotGrid; set(hAx{i},'ygrid','on','yminorgrid','on'); end                       
     end
     
     % sets the non-aligned x/y labels
@@ -657,7 +765,7 @@ else
         end
 
         % if the SEM signal is set, then add the error bars
-        if (~isempty(Ysem))                
+        if ~isempty(Ysem)              
             for j = 1:size(Yplt,1)
                 Yplt(isnan(Ysem)|(Ysem==0)) = NaN;
                 xiNw = xi + sepDN*(2*(j-1)-1)/4;
@@ -666,8 +774,9 @@ else
         end    
 
         % updates the axis properties                
-        if (length(hAx{i}) == 1)
+        if length(hAx{i}) == 1
             % formats the single axis
+            set(gcf,'CurrentAxes',hAx{i}(1))
             formatPlotAxis(hAx{i}(1),pF,ind(i));                 
         else
             % formats the double plot axis
@@ -708,7 +817,7 @@ function createStimResFig(hP,plotD,cP,pP,sP,pF)
 
 % sets the indices to be plotted
 [iPlotT,iPlotF] = deal(find(sP.pT),find(sP.pF));
-if (isempty(iPlotT) && isempty(iPlotF)); return; end
+if isempty(iPlotT) && isempty(iPlotF); return; end
 
 % sets the number of groups and the parameter struct
 p = plotD(sP.pInd);
@@ -719,7 +828,7 @@ useDouble = any(cellfun(@(x)(~all(isnan(x))),p.kI2_mn));
 nSub = 3 + (pP.showGOF + useDouble);
 
 % resets the inactivation title string (if using double exponential)
-if (useDouble)
+if useDouble
     pF.Title(5).String = '\tau_{Fast}';
 end
 
@@ -745,8 +854,8 @@ pD = plotD(~cellfun('isempty',field2cell(plotD,'Y')));
 % sets the parameter strings
 col = getBarColourScheme(nGrp,'m');
 pStr = {'gof','Yamp_mn','kA','kI1','kI2'};
-if (pP.plotRaw); pStr{2} = 'YampR_mn'; end
-pStr = pStr((1+(~pP.showGOF)):(nSub+(~pP.showGOF)));   
+if pP.plotRaw; pStr{2} = 'YampR_mn'; end
+pStr = pStr((~pP.showGOF+1):(~pP.showGOF+nSub));   
 
 % memory allocation
 hAxS = cell(nSub,1);
@@ -757,20 +866,20 @@ for i = 1:nSub
     % creates the bar plot
     hAxS{i} = createSubPlotAxes(hP,[2,nSub],i+nSub);
     hold(hAxS{i},'on');
-    set(hAxS{i},'xlim',xLim,'linewidth',1.5,'box','on') 
+    set(hAxS{i},'xlim',xLim,'linewidth',1.5,'box','on','UserData',i+1) 
     
     % retrieves the stimuli response values
     [Y,Ysem,Ymx] = getSRValues(p,pD,pP,pStr{i}); 
         
     % plots the data
-    [hPlot,xTick] = plotBarError(hAxS{i},Y,Ysem,~isempty(Ysem),0.925,col);      
+    [hPlot,xTick] = plotBarError(hAxS{i},Y,Ysem,~isempty(Ysem),pP.pW,col);      
 
     % formats the subplot axis and sets the group strings
     formatPlotAxis(hAxS{i}(1),pF,i+(1+(~pP.showGOF)));    
-    if ((pP.showGOF) && (i == 1))
+    if pP.showGOF && (i == 1)
         set(hAxS{i},'ylim',[0 1]);    
     else        
-        if (pP.plotFixedH)
+        if pP.plotFixedH
             resetYAxisScale(hAxS{i},Y(:),Ymx);
         else            
             resetYAxisScale(hAxS{i},Y(:));
@@ -783,7 +892,7 @@ for i = 1:nSub
     plot(hAxS{i},[0 nGrp],[0 0],'k','linewidth',1.5)      
         
     % turns the grid on (if specified)
-    if (pP.plotGrid); set(hAxS{i},'ygrid','on','yminorgrid','on'); end
+    if pP.plotGrid; set(hAxS{i},'ygrid','on','yminorgrid','on'); end
 end
 
 % resets the axes positions
@@ -803,7 +912,7 @@ YSRmx = max(cell2mat(cellfun(@(x,y)(max(x{1}(:)+y{1}(:))),...
             field2cell(pD,'Y'),field2cell(pD,'Y_sem'),'un',0)));
 
 % determines the traces/fitted exponentials that are to be plotted
-if (cP.sepDN)
+if cP.sepDN
     hPlotS = cell(2,1); 
 else
     hPlotS = [];
@@ -815,14 +924,17 @@ for i = 1:length(iPlotT)
     for k = 1:(1+cP.sepDN)
         [Tplt,Yplt] = deal(p.T/60,p.Y{k}(:,j));
         
-        if (pP.plotErrorS)                  
+        if pP.plotErrorS                  
             plotSignalSEM(Yplt,p.Y_sem{k}(:,j),Tplt,col{j},0.2*k)
         end        
         
-        if ((i == 1) && (cP.sepDN))
-            hPlotS{k} = plot(hAx,Tplt,Yplt,'color',col{j},'linestyle',lStyle{k});
+        tagStr = sprintf('hRaw%i',k);
+        if (i == 1) && cP.sepDN
+            hPlotS{k} = plot(hAx,Tplt,Yplt,'color',col{j},...
+                'linestyle',lStyle{k},'UserData',i,'Tag',tagStr);
         else
-            plot(hAx,Tplt,Yplt,'color',col{j},'linestyle',lStyle{k});            
+            plot(hAx,Tplt,Yplt,'color',col{j},'linestyle',lStyle{k},...
+                'UserData',i,'Tag',tagStr);            
         end        
     end
 end
@@ -831,20 +943,22 @@ end
 for i = 1:length(iPlotF)
     j = iPlotF(i);
     for k = 1:(1+cP.sepDN)
+        tagStr = sprintf('hFit%i',k);
         [Tplt,Yplt] = deal(p.T/60,p.Y_fit{k}(:,j)+p.Y0_mn{k}(j));        
-        plot(hAx,Tplt,Yplt,'color',col{j},'linewidth',2,'linestyle',lStyle{k});            
+        plot(hAx,Tplt,Yplt,'color',col{j},'linewidth',2,...
+            'linestyle',lStyle{k},'UserData',i,'Tag',tagStr);            
     end
 end
 
 % formats the plot axis
-if (any(sP.pT) || any(sP.pF))
+if any(sP.pT) || any(sP.pF)
     YY = [p.Y{1}(:,iPlotT) p.Y_fit{1}(:,iPlotF)];       
-    if (cP.sepDN)
+    if cP.sepDN
         YY = [YY p.Y{2}(:,iPlotT) p.Y_fit{2}(:,iPlotF)];         
     end    
         
     % sets the min/max values
-    if (pP.plotFixedS)
+    if pP.plotFixedS
         [yMin,yMax] = deal(YSRmn,YSRmx);
     else
         [yMin,yMax] = deal(min(YY(:)),max(YY(:)));
@@ -857,16 +971,16 @@ end
 
 % formats the plot axis
 formatPlotAxis(hAx,pF,1);
-if (all(isnan(YY(:)))); cla(hAx); return; end
+if all(isnan(YY(:))); cla(hAx); return; end
 
 % sets the axis properties (based on the plot type)
 [xLim,yLim] = deal(roundP(p.T([1 end])/60),get(hAx,'ylim'));
-set(hAx,'xlim',xLim,'linewidth',1.5); 
-plot(hAx,[0 0],yLim,'r--','linewidth',1.5)
-plot(hAx,xLim,[0 0],'r--','linewidth',1.5)
+set(hAx,'xlim',xLim,'linewidth',1.5,'UserData',1); 
+plot(hAx,[0 0],yLim,'r--','linewidth',1.5,'HitTest','off')
+plot(hAx,xLim,[0 0],'r--','linewidth',1.5,'HitTest','off')
 
 % plots the gridlines (if required)
-if (pP.plotGrid); grid(hAx,'on'); end
+if pP.plotGrid; grid(hAx,'on'); end
 
 % sets the new left location of the main trace plot
 [pLbl,pAx] = deal(get(get(hAx,'yLabel'),'Extent'),get(hAx,'position'));
