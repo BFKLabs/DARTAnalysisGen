@@ -188,7 +188,7 @@ if (nargin == 3)
 end
 
 % sets the movement type (based on the global parameters)
-if (strcmp(gPara.movType,'Absolute Location'))
+if strcmp(gPara.movType,'Absolute Location')
     cP.movType = 'Absolute Range';
 end
 
@@ -272,7 +272,8 @@ for i = 1:nExp
             % calculates the sleep metrics
             [nBoutNw,tSleepNw] = ...
                 calcSleepMetrics(snTot(i),Ttot,indB,cP,j,flyok{j});
-            RNw = cellfun(@(x,y)(x./y),tSleepNw,nBoutNw,'un',0);
+            RNw = cellfun(@(x,y)...
+                (calcRatio(x,y)),tSleepNw,nBoutNw,'un',0);
             
             % sets the raw values into the storage arrays
             plotD(j) = setRawDataValues(...
@@ -325,7 +326,7 @@ pF = pData.pF;
 % if the incorrect combination is used, then exit with an error (not
 % possible to plot the day/night separation and combined histograms
 % together)
-if (strcmp(pP.pMet,'Combined Bout & Duration') && strcmp(pP.pType,'Boxplot'))
+if strcmp(pP.pMet,'Combined Bout & Duration') && strcmp(pP.pType,'Boxplot')
     eStr = 'Not possible to use boxplot with Combined Bout & Duration.';
     waitfor(errordlg(eStr,'Incorrect Plot Type','modal'))
     return
@@ -653,3 +654,12 @@ cP = retParaStruct(pData.cP);
 if (str2double(cP.nGrp) == 1)
     pData.oP.xVar(1).Type = 'Other';
 end
+
+% --- calculates the ratio of the arrays x/y 
+function xyR = calcRatio(x,y)
+
+% calculates the ratio values (resets NaN values to 0)
+xyR = fillArrayNaNs(x./y,0);
+
+% resets the original NaN values back to NaN's
+xyR(isnan(x) | isnan(y)) = NaN;

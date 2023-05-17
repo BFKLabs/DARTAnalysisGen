@@ -309,7 +309,7 @@ for j = 1:nApp
     end                         
                                            
     % averages the data over the 24 hour cycle     
-    if (strcmp(cP.inactType,'Inactivity Proportion'))
+    if strcmp(cP.inactType,'Inactivity Proportion')
         % calculates the statistical metrics
         plotD(j) = calcMetricStats(plotD(j),'I');
     else        
