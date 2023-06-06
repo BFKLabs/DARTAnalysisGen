@@ -130,6 +130,8 @@ oP = addXVarField(oP,'Time','T','Time');
 
 % sets the dependent variable fields
 oP = addYVarField(oP,'Speed','V',[],5,{'T'},1);
+oP = addYVarField(oP,'Speed (Mean)','V_mn',[],4,{'T'},1);
+oP = addYVarField(oP,'Speed (SEM)','V_sem',[],4,{'T'},1);
 
 % --- sets the data cursor update function
 function dTxt = dataCursorFunc(hObj,evnt,dcObj)
@@ -439,15 +441,6 @@ for j = 1:nApp
                 pP.lWid,'tag','hStim','HitTest','off'); 
         end    
 
-        % sets the time axis properties
-        if pP.isZeitG    
-            % case is using Zeitgeiber time
-            setZeitGTimeAxis(hAx{k},p(j).Tf,snTot);        
-        else
-            % if plotting day/night, then set absolute time
-            setAbsTimeAxis(hAx{k},p(j).Tf,snTot);        
-        end
-
         % sets the x/y axis limits
         if range(sP.xLim) == 0
             set(hAx{k},'ylim',[0 yLim]+yOfs,'box','off')            
@@ -456,6 +449,15 @@ for j = 1:nApp
             set(hAx{k},'xlim',sP.xLim*tMlt,'ylim',ylimT,'box','off')            
         end     
 
+        % sets the time axis properties
+        if pP.isZeitG    
+            % case is using Zeitgeiber time
+            setZeitGTimeAxis(hAx{k},p(j).Tf,snTot);        
+        else
+            % if plotting day/night, then set absolute time
+            setAbsTimeAxis(hAx{k},p(j).Tf,snTot);        
+        end        
+        
         % formats the plot axis
         formatPlotAxis(hAx{k},pF,i); 
         set(hAx{k},'UserData',k);
@@ -468,6 +470,7 @@ for j = 1:nApp
     if sP.Sub.isComb; hPlot{j} = hPlotNw; end              
 end
 
+% ------------------------------ %
 % --- PLOT AXES REFORMATTING --- %
 % ------------------------------ %
 
@@ -486,7 +489,7 @@ else
     cellfun(@(x)(set(x,'ylim',[0+yOfs yLimMx])),hAx)         
 end
 
-%
+% sets up the y-axis properties (for each axes)
 yLimMx = cellfun(@(x)(setStandardYAxis(x,[],5,yLimMx,0)),hAx);
 for i = 1:length(hAx)
     % resets the stimuli markers

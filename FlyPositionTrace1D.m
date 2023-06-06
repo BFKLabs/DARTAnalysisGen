@@ -136,22 +136,24 @@ plotD = initPlotValueStruct(snTot,pData,cP,...
                                 'TD',[],'YD',[]);
 
 % memory allocation                            
-nDay = size(plotD(1).YD,1);                  
+nDay = size(plotD(1).YD,1);  
+szR = [snTot.iMov.nCol,snTot.iMov.nRow];
 
 % ---------------------------- %
 % --- FLY LOCATION SETTING --- %
 % ---------------------------- %
 
 % determines the 
+iC = snTot.iMov.iC;
 sFac = snTot.sgP.sFac;
-tRate = mean(diff(T(ii)));
-indD = detTimeGroupIndexArray(T(ii),snTot.iExpt(1),tRate,cP.Tgrp0);
 
 % sets the position values for all the apparatus
 for i = 1:nApp
-    iC = snTot.iMov.iC{i};
-    xOfs = sFac*(iC(1)-1);
-    Px = (snTot.Px{i}-xOfs)/(sFac*range(iC));
+    % 
+    indR = sub2ind(szR,snTot.cID{i}(:,2),snTot.cID{i}(:,1));
+    xOfs = sFac*arrayfun(@(x)(iC{x}(1)-1),indR)'; 
+    xRng = sFac*arrayfun(@(x)(range(iC{x})),indR)';
+    Px = (snTot.Px{i}-xOfs)./xRng;
         
     % retrieves the array of x-locations
     plotD(i).Y = 1 - Px(ii,:);    
@@ -159,14 +161,12 @@ for i = 1:nApp
     
     % sets the speed values for each of the days    
     plotD(i).YD = repmat({NaN(length(ii),1)},1,size(plotD(i).YD,2));
-    for j = 1:nDay       
+    for j = 1:nDay
         for k = 1:size(xPx,2)
             plotD(i).YD{j,k,1} = xPx(:,k);
         end
     end
 end
-
-a = 1;
 
 % ----------------------------------------------------------------------- %
 % ---                        PLOTTING FUNCTION                        --- %
@@ -241,7 +241,7 @@ for i = 1:nFly
     end
     
     % calculates the normalised positions
-    if (~isempty(pCol))
+    if ~isempty(pCol)
         PxNw = Px(:,i) + ((i-1) + 0.5);
 
         % plots the trace

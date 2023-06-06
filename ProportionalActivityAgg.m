@@ -456,7 +456,7 @@ xTick = 1:nApp;
 if length(pInd) == 1
     plotBarBoxMetrics(hAx,xTick,p,pStr{pInd},pP,yLim);    
 else
-    [hPlot,xTick] = plotDoubleBarBoxMetrics(hAx,p,pStr(pInd),pP);
+    [hPlot,xTick] = plotDoubleBarBoxMetrics(hAx,p,pStr(pInd),pP,ind);
 end
     
 % removes all the text labels

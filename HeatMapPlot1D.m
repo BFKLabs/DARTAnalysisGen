@@ -228,7 +228,6 @@ function [pData,varargout] = plotFunc(snTot,pData,plotD,ind)
 % retrieves the plotting paraeter struct
 pP = retParaStruct(pData.pP);
 sP = retParaStruct(pData.sP);
-cP = retParaStruct(pData.cP);
 pF = pData.pF;
 
 % ------------------------------------------- %
@@ -464,17 +463,20 @@ function [pData,plotD] = outFunc(pData,plotD,snTot)
 function [BHistT,BHistP] = calcPosHist(snTot,cP,indB,iApp)
 
 % parameters
-[pDel,xiH] = deal(0.001,0.5:(cP.rBin+0.5));
+sFac = snTot.sgP.sFac;
+xiH = (0:cP.rBin) + 0.5;
 flyok = snTot.iMov.flyok{iApp};
 ifok = find(flyok);
 
+% determines the offset/range of movement for each fly
+szR = [snTot.iMov.nCol,snTot.iMov.nRow];
+indR = sub2ind(szR,snTot.cID{iApp}(:,2),snTot.cID{iApp}(:,1));
+xOfs = sFac*arrayfun(@(x)(snTot.iMov.iC{x}(1)-1),indR)'; 
+xRng = sFac*arrayfun(@(x)(range(snTot.iMov.iC{x})),indR)';
+
 % sets the x-coordinates of the flies   
 Px = snTot.Px{iApp}(:,flyok);
-
-% calculates the flies binned x-locations (denoted by PxN)
-PxMin = repmat(min(Px,[],1)*(1-pDel),size(Px,1),1);
-PxMax = repmat(max(Px,[],1)*(1+pDel),size(Px,1),1);
-PxN = min(max(1,floor(cP.rBin*(Px - PxMin)./(PxMax - PxMin)) + 1),cP.rBin);
+PxN = min(max(1,floor(cP.rBin*(Px - xOfs)./xRng) + 1),cP.rBin);
 clear Px
 
 % memory allocation
