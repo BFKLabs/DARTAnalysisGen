@@ -299,7 +299,7 @@ end
 
 % creates the new image and sets the image properties
 imagesc(CAll*100); axis normal; axis ij; hold on
-colormap('jet'); 
+colormap(hAx,'jet'); 
 caxis([0 100]); 
 
 % updates the image y-tick positions/labels
@@ -320,7 +320,7 @@ for j = nApp:-1:1
     end 
     
     % plots the values
-    if (~isempty(p(i).Y))    
+    if ~isempty(p(i).Y)  
         % plots the tube row markers
         xNw = repmat(get(hAx,'xlim')',1,rBin-1);
         plot(xNw,repmat(1:rBin-1,2,1)+(0.5+yOfs),'w:')    
@@ -341,7 +341,7 @@ end
 set(hAx,'xticklabel',[],'UserData',1)
 
 % creates the colour bar
-hCB = colorbar;
+hCB = colorbar(hAx);
 
 % set the figure font properties
 formatPlotAxis(hAx,pF,1);
@@ -444,6 +444,9 @@ end
 pF.Title(1).String = '';
 formatPlotAxis(hAx2,pF,1);
 setObjVisibility(hAx2,'on')
+
+% resets the handle visiblity
+hFig.HandleVisibility = 'callback';
 
 % ----------------------------------------------------------------------- %
 % ---                         OUTPUT FUNCTION                         --- %

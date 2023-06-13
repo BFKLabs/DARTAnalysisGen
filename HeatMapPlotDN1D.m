@@ -242,6 +242,7 @@ for i = 1:nExp
         % if the user cancelled, then exit the function
         wStrNw = sprintf('Calculating Histograms (%i of %i)',j,nApp);
         if h.Update(1+wOfs,wStrNw,j/(1+nApp))
+            [plotD,ok] = deal([],false);
             return
         end
                 
@@ -530,6 +531,7 @@ function [pData,plotD] = outFunc(pData,plotD,snTot)
 function [BHistT,BHistP] = calcDNPosHist(snTot,nDay,cP,indB,ii,iApp)
 
 % parameters
+tMin = 5;
 [nBin,nGrp] = deal(convertTime(1,'day','sec')/cP.tBin, length(indB));
 [pDel,xiH,flyok] = deal(0.001,0.5:(cP.rBin+0.5),snTot.iMov.flyok{iApp});
 ifok = find(flyok);
@@ -573,6 +575,10 @@ if ~isempty(isNN_L)
         indT(isNN_L:end, end) = NaN;
     end
 end
+
+% removes the columns with a low value count
+isFeasC = sum(~isnan(indT),1) > tMin;
+indT = indT(:,isFeasC);
     
 % memory allocation
 nDay = max(nDay,size(indT,2));
