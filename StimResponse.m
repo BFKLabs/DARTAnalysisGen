@@ -545,6 +545,12 @@ sP = retParaStruct(pData.sP);
 cP = retParaStruct(pData.cP);
 pF = pData.pF;
 
+% sets up any missing fields
+if ~isfield(sP,'pT')
+    nGrp = str2double(cP.nGrp);
+    [sP.pT,sP.pF] = deal(setGroup(1,[nGrp,1]));
+end
+
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %

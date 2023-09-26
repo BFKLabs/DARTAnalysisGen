@@ -427,7 +427,7 @@ for i = 1:nExp
         wStrNw = sprintf('%s (Experiment %i of %i)',wStr{1},i,nExp);
         h.Update(1,wStrNw,i/(1+nExp));
     end
-    
+        
     % calculates the new sleep intensity data
     [YcountNw,YcountRNw,XbinNw,YbinNw,ok] = ...
                             getStimuliResponseData(snTot(i),cP,h,wOfs);        
@@ -435,7 +435,7 @@ for i = 1:nExp
         % if the user cancelled, then exit the function
         plotD = [];
         return
-    else
+    else        
         % otherwise, append the data to the arrays        
         for j = 1:nApp
             % appends the x-positional data to the arrays
@@ -492,7 +492,7 @@ for i = 1:nApp
     % calculates the metrics/signals for all groups
     for j = 1:(1+cP.sepDN)
         if ~all((Ycount{i}(j,:)) == 0)
-            % calculates the average speed        
+            % calculates the average speed                
             [plotD(i).Y,plotD(i).Y_sem] = ...
                                 calcSRAvgSpeed(P(i,:),cP,N,[],[],is2D,1);
                             
@@ -508,7 +508,7 @@ for i = 1:nApp
             [p,Yfit,gof] = fitSignalExp(plotD(i).T(jj),Ydata,cP);
             plotD(i).gof = cellfun(@(x)(x(:)'),gof,'un',0);
             plotD(i).Y_fit = cellfun(@(x)....
-                                ([zeros(tBefore,nGrp);x]),Yfit,'un',0);            
+                                ([zeros(tBefore,nGrp);x]),Yfit,'un',0);                                        
                             
             % sets the SR fitted parameters
             plotD(i) = setSRFittedPara(plotD(i),p,tBefore,nGrp);                                    
@@ -814,6 +814,12 @@ end
 
 % --- creates the stimuli response figure
 function createStimResFig(hP,plotD,cP,pP,sP,pF)
+
+% sets up any missing fields
+if ~isfield(sP,'pT')
+    nGrp = 60/str2double(cP.nBin);
+    [sP.pT,sP.pF] = deal(setGroup(1,[nGrp,1]));
+end
 
 % sets the indices to be plotted
 [iPlotT,iPlotF] = deal(find(sP.pT),find(sP.pF));

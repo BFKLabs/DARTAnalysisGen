@@ -559,6 +559,12 @@ if grpStim ~= plotD{1}(1).gType
     return
 end
 
+% sets up any missing fields
+if ~isfield(sP,'pT')
+    nGrp = str2double(cP.nGrp);
+    [sP.pT,sP.pF] = deal(setGroup(1,[nGrp,1]));
+end
+
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %

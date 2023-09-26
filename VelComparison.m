@@ -373,6 +373,12 @@ pF = pData.pF;
 % if the current data set is empty, then exit the loop
 if all(isnan(plotD{1}(sP.pInd).V1_mn)); return; end
 
+% sets any missing fields
+if ~isfield(sP,'pT')
+    nGrp = str2double(cP.nGrp);
+    sP.pT = true(nGrp,1);
+end
+
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %
