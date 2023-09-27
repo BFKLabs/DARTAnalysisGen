@@ -757,14 +757,18 @@ end
 
 % creates the legend
 if nGrpT > 1
-    [dY,isOut] = deal(0.02,sP.pT' & ~all(isnan(V1),1));
+    isOut = sP.pT' & ~all(isnan(V1),1);
+    [dY,lStrF] = deal(0.02,lStr1(isOut));
+    hasPlt = hPlot > 0;
+
     if sum(isOut) == 1
         % only one valid time group
-        hLg = legend(hPlot,lStr1(isOut),'location','NorthOutside');
+        hLg = legend(hPlot(hasPlt),lStrF,'location','NorthOutside');
         set(hLg,'box','off')
     else
         % more than one valid time group
-        hLg = columnlegend(hPlot,2,lStr1(isOut),'location','NorthOutside');
+        hLg = columnlegend(...
+            hPlot(hasPlt),2,lStrF,'location','NorthOutside');
     end
 
     % resets the axis locations
