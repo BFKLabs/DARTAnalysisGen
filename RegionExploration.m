@@ -222,9 +222,6 @@ end
 % --- function for calculating the data for the analysis figure --- %
 function [pData,varargout] = plotFunc(snTot,pData,plotD,ind)
 
-% global variable
-global isDocked
-
 % retrieves the plotting paraeter struct
 pP = retParaStruct(pData.pP);
 sP = retParaStruct(pData.sP);
