@@ -173,6 +173,99 @@ if length(snTot) == 1
     oP = addYVarField(oP,'Speed','V',[],Type4,{'T'},1);
 end
 
+% --- sets the data cursor update function
+function dTxt = dataCursorFunc(~,evnt,dcObj)
+
+% updates the plot data fields
+dcObj.getCurrentPlotData(evnt);
+
+% retrieves the current plot data
+pP = retParaStruct(dcObj.pData.pP);
+sP = retParaStruct(dcObj.pData.sP);
+
+% sets the common class fields
+dcObj.useGrpHdr = false;
+dcObj.grpName = dcObj.pData.appName(sP.Sub.isPlot);
+
+% sets the metric specific fields
+switch pP.pMet
+    case 'Event/Trace Overlay'
+        % case is the trace/event overlay
+        
+        % field retrieval
+        uD = evnt.Target.UserData;        
+        pPos = dcObj.evnt.Position;                
+        
+        % sets the plot type based on the selection
+        if strcmp(get(evnt.Target,'Marker'),'none')
+            dcObj.pType = 'Trace';            
+        else
+            % sets the plot type
+            dcObj.pType = 'Marker';
+            
+            % determines the index of the selected marker
+            hP = evnt.Target.Parent;               
+            mType = evnt.Target.Marker;
+            hM = findall(hP,'UserData',uD,'Marker',mType);            
+            dcObj.mIndex = find(pdist2([hM.XData(:),hM.YData(:)],pPos)==0);
+        end
+        
+        % resets the plot metric value
+        p = dcObj.plotD{1}(sP.pInd);
+        switch pP.pMetT
+            case 'Height'
+                pPos(2) = p.Y{uD}(p.T{1} == pPos(1));
+                dcObj.yUnits = 'mm';
+                
+            case 'Speed'
+                pPos(2) = p.V{uD}(p.T{1} == pPos(1));
+                dcObj.yUnits = 'mm/s';                
+        end
+        
+        % rescales the y-value
+        dcObj.evnt.Position = pPos;
+        
+        % sets the other properties
+        dcObj.xName = 'Time';
+        dcObj.tUnits = 'sec';        
+        dcObj.yName = pP.pMetT;        
+        [dcObj.useGrpHdr,dcObj.combFig] = deal(true,false);        
+        
+    case 'Individual K-M Curve'
+        % case is the individual K/M curve
+        dcObj.pType = 'Trace';
+        dcObj.yName = 'Event Count';      
+        dcObj.xName = 'Time';
+        dcObj.tUnits = 'sec';  
+        [dcObj.useGrpHdr,dcObj.combFig] = deal(true);
+        
+    case 'Total K-M Curve'        
+        % case is the total K/M curve
+        dcObj.pType = 'Trace';
+        dcObj.yName = 'Percentage';
+        dcObj.xName = 'Time';
+        dcObj.tUnits = 's';
+        [dcObj.useGrpHdr,dcObj.combFig] = deal(true);
+        
+    case 'Event Count'        
+        % case is the other plot metrics
+        dcObj.pType = pP.pType;
+        dcObj.yName = 'Event Count';
+        dcObj.xName = 'Group Name';
+        dcObj.xGrp = dcObj.grpName;
+        
+    otherwise
+        % case is the other plot metrics
+        dcObj.pType = pP.pType;
+        dcObj.yName = 'Time';
+        dcObj.yUnits = 's';
+        dcObj.xName = 'Group Name';
+        dcObj.xGrp = dcObj.grpName;        
+end
+        
+% sets up the data cursor string
+dTxt = dcObj.setupCursorString();       
+        
 % ----------------------------------------------------------------------- %
 % ---                       CALCULATION FUNCTION                      --- %
 % ----------------------------------------------------------------------- %
@@ -194,12 +287,12 @@ end
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,'T',[],'Y',[],'V',[],...
-                        'tEvent',[],'tEvent_mn',[],'tEvent_sem',[],...                
-                        'tEventT',[],'tEventT_mn',[],'tEventT_sem',[],...                            
-                        'vEvent',[],'vEvent_mn',[],'vEvent_sem',[],...
-                        'nEvent',[],'nEvent_mn',[],'nEvent_sem',[],...                            
-                        'iEvent',[],'tStart',[],'indE',[],'tLim',[],...
-                        'xCDF',[],'yCDF',[],'xCDFT',[],'yCDFT',[]);
+                'tEvent',[],'tEvent_mn',[],'tEvent_sem',[],...                
+                'tEventT',[],'tEventT_mn',[],'tEventT_sem',[],...                            
+                'vEvent',[],'vEvent_mn',[],'vEvent_sem',[],...
+                'nEvent',[],'nEvent_mn',[],'nEvent_sem',[],...                            
+                'iEvent',[],'tStart',[],'indE',[],'tLim',[],...
+                'xCDF',[],'yCDF',[],'xCDFT',[],'yCDFT',[],'xScl',[]);
                         
 % creates the waitbar figure
 wStr = {'Overall Progress','Event Detection Calculations'};
@@ -319,6 +412,13 @@ for i = 1:nExp
         
         % sets the 
         plotD(j).indE{i} = arrayfun(@num2str,(1:nMaxE)','un',0);
+        
+        % calculates the scale factors
+        if nExp == 1
+            plotD(j).xScl = zeros(1,2);
+            plotD(j).xScl(1) = calcScaleFactor('Height',snTot(i),j);            
+            plotD(j).xScl(2) = calcScaleFactor('Speed',plotD(j).V);        
+        end
     end
     
     % updates the waitbar figure
@@ -430,14 +530,17 @@ end
 % --- function for calculating the data for the analysis figure --- %
 function [pData,varargout] = plotFunc(snTot,pData,plotD,ind)
 
+% initialisations
+varargout = {};
+
 % retrieves the plotting paraeter struct
 pP = retParaStruct(pData.pP);
 cP = retParaStruct(pData.cP);
 sP = retParaStruct(pData.sP);
 pF = pData.pF;
 
-% resets the datacursor callback function
-pData.dcFunc = [];
+% updates the data cursor
+pData.dcFunc = @dataCursorFunc;    
 
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
@@ -482,24 +585,29 @@ switch pP.pMet
         % initialisations
         TT = p.T{1};
         xiF = find(snTot.iMov.flyok{sP.pInd});
-        [nFly,iC] = deal(xiF(end),snTot.iMov.iC{sP.pInd});        
-        xScl = range(iC)*snTot.sgP.sFac;
+        nFly = xiF(end);                
         
         % plot object properties
-        [yLim,xLim] = deal([0,nFly],[0,TT(end)/60]);
+        [yLim,xLim] = deal([0,nFly],[0,TT(end)]);
         yTickLbl = arrayfun(@num2str,1:nFly,'un',0);
         tStr = sprintf('%s (%s)',pP.pMetT,pData.appName{sP.pInd});        
+        xScl = p.xScl(1+strcmp(pP.pMetT,'Speed'));        
         
-        % plots the traces
+        % plots the traces        
         switch pP.pMetT
             case 'Height'
                 Yplt = cellfun(@(x,y)(scaleSig(x/xScl,y-1)),...
                                     p.Y(xiF),num2cell(xiF)','un',0);
-                cellfun(@(x)(plot(TT/60,x,'b')),Yplt)                
+                                
+                xiY = num2cell(1:length(Yplt));
+                cellfun(@(x,y)(plot(TT,x,'b','UserData',y)),Yplt,xiY)
+
             case 'Speed'
                 Yplt = cellfun(@(x,y)(scaleSig(x/xScl,y-1)),...
                                     p.V(xiF),num2cell(xiF)','un',0);
-                cellfun(@(x)(plot(TT/60,x,'b')),Yplt)
+                
+                xiY = num2cell(1:length(Yplt));                
+                cellfun(@(x,y)(plot(TT,x,'b','UserData',y)),Yplt,xiY)
         end
         
         % sets the event/separation lines
@@ -511,10 +619,8 @@ switch pP.pMet
                 [~,indP,iC] = intersect(p.T{1},Ts);
                 
                 % creates the plot object
-                uD = [Ts(iC)/60,Yplt{i}(indP),...
-                            arr2vec(p.tEvent{i}(iC)),p.iEvent{i}];
-                plot(Ts(iC)/60,Yplt{i}(indP),'r.','tag','hEvent',...
-                            'UserData',uD,'MarkerSize',20);
+                plot(Ts(iC),Yplt{i}(indP),'r.','tag','hEvent',...
+                            'UserData',i,'MarkerSize',20);
             end
             
             % plots the separation line
@@ -536,8 +642,7 @@ switch pP.pMet
         % sets the title/label strings
         pF.Title(1).String = tStr;
         pF.yLabel(1).String = 'Fly Index';
-        pF.xLabel(1).String = 'Time (min)';       
-        pData.dcFunc = @dataCursorFunc;    
+        pF.xLabel(1).String = 'Time (sec)';               
         
         % flips the vertical axis
         axis(hAx,'ij')
@@ -551,11 +656,12 @@ switch pP.pMet
         
         % creates the K-M curves
         for i = 1:nApp
-            [x,f] = deal(p(i).xCDF/60,p(i).yCDF);
+            [x,f] = deal(p(i).xCDF,p(i).yCDF);
             if pP.normSig
-                hPlt(i) = stairs(hAx,x,f/f(end),'LineWidth',pP.lWid);
+                hPlt(i) = stairs(hAx,x,f/f(end),'LineWidth',pP.lWid,...
+                    'UserData',i);
             else
-                hPlt(i) = stairs(hAx,x,f,'LineWidth',pP.lWid);
+                hPlt(i) = stairs(hAx,x,f,'LineWidth',pP.lWid,'UserData',i);
             end
         end
 
@@ -572,20 +678,20 @@ switch pP.pMet
         end
         
         % sets the axis labels and other properties
-        pF.xLabel(1).String = 'Time (min)';
-        set(hAx,'xlim',xLim/60)
+        pF.xLabel(1).String = 'Time (sec)';
+        set(hAx,'xlim',xLim)
         
     case 'Total K-M Curve'
         % case is the total duration Kaplan-Meier curve
         
         % memory allocation
-        hPlt = zeros(nApp,1);
-        Y = field2cell(p,'tEventT');             
+        hPlt = zeros(nApp,1);            
         
         % creates the survival curves for each genotype group
         for i = 1:nApp
             [x,f] = deal(p(i).xCDFT,p(i).yCDFT);
-            hPlt(i) = stairs(hAx,x,100*(1-f),'LineWidth',pP.lWid);
+            hPlt(i) = stairs(hAx,x,100*(1-f),'LineWidth',pP.lWid,...
+                'UserData',i);
         end        
         
         % creates the legend
@@ -643,90 +749,6 @@ function [pData,plotD] = outFunc(pData,plotD,snTot)
 
 % finish me?!
 a = 1;
-
-% ----------------------------------------------------------------------- %
-% ---                  DATACURSOR CALLBACK FUNCTION                   --- %
-% ----------------------------------------------------------------------- %
-
-% --- data cursor callback function
-function dataCursorFunc(hFig,~)
-
-% object retrieval
-dX = 0.015;
-hAx = findall(hFig,'type','axes');
-[hP,hText] = deal(get(hAx,'Parent'),findobj(hAx,'tag','hText'));
-
-% retrieves the current mouse point
-pP = get(hP,'Position');
-cPos = get(hAx,'CurrentPoint'); 
-mP = cPos(1,1:2);
-
-% updates the marker line visibility
-if isInAxes(hAx,mP)
-    hHover = getAxesHoverObject(hAx,mP,pP);
-    if isempty(hHover)
-        % if not over an object, then disable the text object
-        setObjVisibility(hText,'off')
-    else
-        % sets the normalised coordinates
-        nwStr = setDataTipTxt(get(hHover,'UserData'),mP);
-        [xLim,yLim] = deal(get(hAx,'xlim'),get(hAx,'ylim'));
-        mPN = [(mP(1)-xLim(1))/diff(xLim),(mP(2)-yLim(1))/diff(yLim)];         
-        mPN = [mPN(1)-dX,1-mPN(2)];
-
-        % updates the text-box position
-        set(hText,'Position',[mPN,0],'visible','on',...
-                  'String',nwStr,'HorizontalAlignment','right')                
-    end
-else
-    % otherwise, disable the text object
-    setObjVisibility(hText,'off')
-end
-
-% --- determines if the mouse if hovering an event plot object
-function hHover = getAxesHoverObject(hAx,mP,pP)
-
-% initialisations
-nPClose = 5;
-axObj = findobj(hAx,'tag','hEvent');
-[xL,yL] = deal(get(hAx,'xlim'),get(hAx,'ylim'));
-[dxL,dyL] = deal(diff(xL),diff(yL));
-mPN = pP(3:4).*(mP-[xL(1),yL(1)])./[dxL,dyL];
-
-% determines the objects that the mouse is currently hovering over
-isHover = false(length(axObj),1);
-for i = 1:length(isHover)
-    % calculates the x/y data points (in pixels)
-    [xD,yD] = deal(get(axObj(i),'xData'),get(axObj(i),'yData'));
-    [pxD,pyD] = deal(pP(3)*(xD-xL(1))/dxL,pP(4)*(yD-yL(1))/dyL);      
-    
-    % determines if the mouse is close to any x/y data points
-    isHover(i) = any(pdist2([pxD(:),pyD(:)],mPN) < nPClose);
-end
-
-% returns the objects which are being hovered over
-hHover = axObj(isHover);
-
-% --- determines if the point is within the axes
-function isIn = isInAxes(hAx,mP)
-
-% determines if the mouse position is over the signal setup plot axes
-[xL,yL] = deal(get(hAx,'xlim'),get(hAx,'ylim'));
-isIn = prod(sign(xL - mP(1))) == -1 && ...
-       prod(sign(yL - mP(2))) == -1;
-
-% --- sets up the datatip string text
-function nwStr = setDataTipTxt(uD,mP)
-
-% calculates the closest event string
-indE = argMin(sum(sqrt((uD(:,1:2) - mP).^2),2));
-
-% sets the data tip string
-nwStr = {sprintf('Fly Index = %i',roundP(mP(2)));...
-         sprintf('Event Count = %i',indE);...
-         sprintf('Duration = %.2f',uD(indE,3));...
-         sprintf('Video Index = %i',uD(indE,4));...
-         sprintf('Frame Index = %i',uD(indE,5))};
    
 % ----------------------------------------------------------------------- %
 % ---                         OTHER FUNCTIONS                         --- %
@@ -859,4 +881,19 @@ function Y = getPosCoords(Y,cP)
 if cP.useSm
     nSm = 2*cP.nSm + 1;
     Y = cell2mat(cellfun(@(x)(smooth(x,nSm)),num2cell(Y,1),'un',0));
+end
+
+% --- calculates the metric scale factor (based on type)
+function xScl = calcScaleFactor(pMetT,sObj,varargin)
+
+switch pMetT
+    case 'Height'
+        % case is the height 
+        iC = sObj.iMov.iC{varargin{1}};
+        xScl = range(iC)*sObj.sgP.sFac;
+
+    case 'Speed'
+        % case is the height
+        xScl = 1.05*max(cellfun(@max,sObj(~cellfun('isempty',sObj))));
+
 end
