@@ -56,25 +56,25 @@ nPara = 5 + hasExD;
 cP = setParaFields(nPara);
 
 % sets the tab list names
-a = {'1 - General','2 - Smoothing'};
+a = {'1 - Thresholds','2 - Smoothing'};
 
 % sets the parameter fields
 cP(1) = setParaFields(a{1},'Number',3,...
-            'vEvent','Event Speed Threshold (mm/s)',[0.01 1000 true]);
-cP(2) = setParaFields(a{1},'Number',2,...
-            'yLim','Vertical Height Threshold (mm)',[0.01 1000 true]);
-cP(3) = setParaFields(a{1},'Number',0.5,...
-            'tEvent','Minimum Event Duration (s)',[0.01 1000 true]);        
-cP(4) = setParaFields(a{2},'Boolean',false,...
-            'useSm','Smooth Speed Calculations');
+    'vEventT','Total Speed Threshold (mm/s)',[0.01 1000 false]);
+cP(2) = setParaFields(a{1},'Number',0,...
+    'vEventH','Horizontal Speed Threshold (mm/s)',[0.00 1000 false]);        
+cP(3) = setParaFields(a{1},'Number',2,...
+    'yLim','Vertical Height Threshold (mm)',[0.01 1000 false]);
+cP(4) = setParaFields(a{1},'Number',0.45,...
+    'tEvent','Minimum Duration Threshold (s)',[0.01 1000 false]);        
 cP(5) = setParaFields(a{2},'Number',2,...
-            'nSm','Smoothing Window Size',[1,20,true],{4,2});        
+    'nSm','Smoothing Window Size',[1,20,true]);        
         
 % sets the tool-tip strings
-cP(1).TTstr = 'Minimum average speed required for an event to occur';
-cP(2).TTstr = 'Maximum vertical height for detecting convulsion events';
-cP(3).TTstr = 'Minimum duration of convulsion activity';
-cP(4).TTstr = 'Smoothes the speed calculations (for event detection)';
+cP(1).TTstr = 'Minimum average total speed required for an event to occur';
+cP(2).TTstr = 'Minimum average horizontal speed required for an event to occur';
+cP(3).TTstr = 'Maximum vertical height for detecting convulsion events';
+cP(4).TTstr = 'Minimum duration of convulsion activity';
 cP(5).TTstr = 'Smoothing half-window size';
 
 % adds the add external data (if possible)
@@ -88,11 +88,11 @@ function pP = initPlotPara(snTot)
 
 % initialisations
 mltExp = length(snTot) > 1;
-nPara = 7 + (~mltExp);
+nPara = 7 + ~mltExp*3;
 pMet = {'Event/Trace Overlay','Individual K-M Curve','Total K-M Curve',...
          'Individual Event Duration','Total Event Duration','Event Count'};
 pType = {'Bar Graph','Boxplot'};
-pMetT = {'Height','Speed'};
+pMetT = {'Height','Speed','Horizontal Speed'};
 
 % initialises the parameter struct
 pP = setParaFields(nPara);
@@ -116,13 +116,22 @@ pP(5) = setParaFields(a{2},'Boolean',1,'plotErr',...
 
 % sets the trace type parameter (multi-expt only)
 if ~mltExp
-    pP(6) = setParaFields(a{3},'List',{1,pMetT},'pMetT','Trace Type',[],{1,1});    
+    pP(6) = setParaFields(a{3},'List',{1,pMetT},'pMetT','Trace Type',[],{1,1});
 end
 
-% sets the trace parameter fields
+% sets the other trace parameter fields
 iiP = 6 + ~mltExp;
 pP(iiP) = setParaFields(a{3},'Number',1,'lWid',...
                 'Plot Line Width',[0.1 10 false],{1,indT});
+
+% adds in the trace checkbox parameters            
+if ~mltExp
+    iiP = 9;
+    pP(8) = setParaFields(a{3},'Boolean',0,'useFrm','Plot Frame Index',[],{1,1});            
+    pP(9) = setParaFields(a{3},'Boolean',0,'pltThresh','Plot Threshold Limits',[],{1,1});            
+end
+            
+% sets the other trace parameter fields            
 pP(iiP+1) = setParaFields(a{3},'Boolean',0,'normSig',...
                 'Plot Normalised Signal',[],{1,1+(~mltExp)});            
 
@@ -171,6 +180,7 @@ if length(snTot) == 1
     oP = addXVarField(oP,'Time','T','Time');
     oP = addYVarField(oP,'Height','Y',[],Type4,{'T'},1);
     oP = addYVarField(oP,'Speed','V',[],Type4,{'T'},1);
+    oP = addYVarField(oP,'Horz Speed','Vh',[],Type4,{'T'},1);
 end
 
 % --- sets the data cursor update function
@@ -210,24 +220,40 @@ switch pP.pMet
             dcObj.mIndex = find(pdist2([hM.XData(:),hM.YData(:)],pPos)==0);
         end
         
+        % retrieves the plot data struct
+        p = dcObj.plotD{1}(sP.pInd);    
+        
+        % sets the selected frame index (based on the x-axis type)
+        if pP.useFrm
+            % case is using the frame index
+            iiT = pPos(1);
+            dcObj.xName = 'Frame Index';
+        else
+            % case is using the experiment time
+            iiT = p.T{1} == pPos(1);        
+            dcObj.xName = 'Time';
+            dcObj.tUnits = 'sec';            
+        end
+        
         % resets the plot metric value
-        p = dcObj.plotD{1}(sP.pInd);
         switch pP.pMetT
-            case 'Height'
-                pPos(2) = p.Y{uD}(p.T{1} == pPos(1));
+            case 'Height'                
+                pPos(2) = p.Y{uD}(iiT);
                 dcObj.yUnits = 'mm';
                 
             case 'Speed'
-                pPos(2) = p.V{uD}(p.T{1} == pPos(1));
+                pPos(2) = p.V{uD}(iiT);
                 dcObj.yUnits = 'mm/s';                
+                
+            case 'Horizontal Speed'
+                pPos(2) = p.Vh{uD}(iiT);
+                dcObj.yUnits = 'mm/s';                                
         end
         
         % rescales the y-value
         dcObj.evnt.Position = pPos;
         
-        % sets the other properties
-        dcObj.xName = 'Time';
-        dcObj.tUnits = 'sec';        
+        % sets the other properties        
         dcObj.yName = pP.pMetT;        
         [dcObj.useGrpHdr,dcObj.combFig] = deal(true,false);        
         
@@ -286,7 +312,7 @@ end
 [nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % initialises the plot value data struct
-plotD = initPlotValueStruct(snTot,pData,cP,'T',[],'Y',[],'V',[],...
+plotD = initPlotValueStruct(snTot,pData,cP,'T',[],'Y',[],'V',[],'Vh',[],...
                 'tEvent',[],'tEvent_mn',[],'tEvent_sem',[],...                
                 'tEventT',[],'tEventT_mn',[],'tEventT_sem',[],...                            
                 'vEvent',[],'vEvent_mn',[],'vEvent_sem',[],...
@@ -307,6 +333,9 @@ nFrm0 = arrayfun(@(y)(cellfun(@(x)(length(x)),y.T)),snTot,'un',0);
 % --------------------------- %
 % --- METRIC CALCULATIONS --- %
 % --------------------------- %
+
+% sets up the filter
+hF = [ones(cP.nSm+1,1);zeros(cP.nSm,1)];
 
 % retrieves the analysis time limits for each expt
 tLim = cell2mat(arrayfun(@(x)(getTimeLimits(x,cP)),snTot(:),'un',0));
@@ -331,11 +360,9 @@ for i = 1:nExp
     % determines the feasible data points for the experiment
     iiT = (T0 >= tLim(i,1)) & (T0 <= tLim(i,2));
     
-    % resets the data points
-    T = T0(iiT) - tLim(i,1);
-        
     % calculates the time difference vector
-    dT0 = [diff(T0(1:2));T0(3:end)-T0(1:end-2);diff(T0((end-1):end))];        
+    T = T0(iiT) - tLim(i,1);
+    dT0 = imfilter([diff(T0(1:2));diff(T)],hF);
     
     % calculates the convulsion events
     for j = 1:nApp
@@ -359,26 +386,28 @@ for i = 1:nExp
             end
             
             % calculates the inter-frame speeds
-            [V,X] = calcInterFrameSpeed(snTot(i),j,dT0,cP);
-            Y = calcPosHeights(X);
+            [V,Vh,X] = calcInterFrameSpeed(snTot(i),j,dT0,hF);
+            H = calcPosHeights(X);
             
             % sets the x-coordinates (single expt only)            
             if nExp == 1                  
                 plotD(j).T = {T};
-                plotD(j).Y(1,flyok{j},i) = num2cell(Y(iiT,:),1); 
-                plotD(j).V(1,flyok{j},i) = num2cell(V(iiT,:),1); 
+                plotD(j).Y(1,flyok{j},i) = num2cell(H(iiT,:),1); 
+                plotD(j).V(1,flyok{j},i) = num2cell(V(iiT,:),1);
+                plotD(j).Vh(1,flyok{j},i) = num2cell(Vh(iiT,:),1);
             else
                 plotD(j).T{i} = T;
             end            
             
             % determines the frames which meet the speed/height tolerances
-            [VT,YT] = deal(num2cell(V,1),num2cell(Y,1));
-            iGrp = cellfun(@(x,y)(getGroupIndex((x>=cP.vEvent) & ...
+            [VT,VH,YT] = deal(num2cell(V,1),num2cell(Vh,1),num2cell(H,1));
+            iGrp = cellfun(@(x,y)(getGroupIndex((x>=cP.vEventT) & ...
                             (y<=cP.yLim))),VT,YT,'un',0);
                
             % reduces the events to those that meet the duration tolerance
-            jGrp = cellfun(@(x)(x(cellfun(@(x)(diff(...
-                            T0(x([1,end])))),x) >= cP.tEvent)),iGrp,'un',0);
+            jGrp = cellfun(@(x,v)(x(...
+                (cellfun(@(x)(diff(T0(x([1,end])))),x) >= cP.tEvent) & ...
+                 cellfun(@(x)(any(v(x) >= cP.vEventH)),x))),iGrp,VH,'un',0);
 
             % sets the start, duration and avg speed of each event
             [tS,tE,vE,iE] = getEventProps(T0,VT,jGrp,nFrm0{i},tLim(i,:));  
@@ -415,9 +444,10 @@ for i = 1:nExp
         
         % calculates the scale factors
         if nExp == 1
-            plotD(j).xScl = zeros(1,2);
+            plotD(j).xScl = zeros(1,3);
             plotD(j).xScl(1) = calcScaleFactor('Height',snTot(i),j);            
             plotD(j).xScl(2) = calcScaleFactor('Speed',plotD(j).V);        
+            plotD(j).xScl(3) = calcScaleFactor('Speed',plotD(j).Vh);
         end
     end
     
@@ -541,6 +571,7 @@ pF = pData.pF;
 
 % updates the data cursor
 pData.dcFunc = @dataCursorFunc;    
+pMetT = {'Height','Speed','Horizontal Speed'};
 
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
@@ -583,32 +614,46 @@ switch pP.pMet
         % case is the trace/event overlay
         
         % initialisations
-        TT = p.T{1};
         xiF = find(snTot.iMov.flyok{sP.pInd});
         nFly = xiF(end);                
         
+        % sets the time vector
+        if pP.useFrm
+            xLblStr = 'Frame Index';
+            TT = 1:length(p.T{1});
+        else
+            xLblStr = 'Time (sec)';
+            TT = p.T{1};
+        end
+        
         % plot object properties
+        iPltM = find(strcmp(pMetT,pP.pMetT));
         [yLim,xLim] = deal([0,nFly],[0,TT(end)]);
         yTickLbl = arrayfun(@num2str,1:nFly,'un',0);
         tStr = sprintf('%s (%s)',pP.pMetT,pData.appName{sP.pInd});        
-        xScl = p.xScl(1+strcmp(pP.pMetT,'Speed'));        
+        xScl = p.xScl(iPltM);        
         
         % plots the traces        
         switch pP.pMetT
             case 'Height'
+                yThresh = cP.vEventT;
                 Yplt = cellfun(@(x,y)(scaleSig(x/xScl,y-1)),...
-                                    p.Y(xiF),num2cell(xiF)','un',0);
-                                
-                xiY = num2cell(1:length(Yplt));
-                cellfun(@(x,y)(plot(TT,x,'b','UserData',y)),Yplt,xiY)
+                                    p.Y(xiF),num2cell(xiF)','un',0);                                
 
             case 'Speed'
+                yThresh = cP.yLim;                
                 Yplt = cellfun(@(x,y)(scaleSig(x/xScl,y-1)),...
                                     p.V(xiF),num2cell(xiF)','un',0);
-                
-                xiY = num2cell(1:length(Yplt));                
-                cellfun(@(x,y)(plot(TT,x,'b','UserData',y)),Yplt,xiY)
+                                
+            case 'Horizontal Speed'
+                yThresh = NaN;
+                Yplt = cellfun(@(x,y)(scaleSig(x/xScl,y-1)),...
+                                    p.Vh(xiF),num2cell(xiF)','un',0);                                
         end
+        
+        % plots the tracks
+        xiY = num2cell(1:length(Yplt));
+        cellfun(@(x,y)(plot(TT,x,'b','UserData',y)),Yplt,xiY)                
         
         % sets the event/separation lines
         for i = 1:nFly
@@ -619,8 +664,19 @@ switch pP.pMet
                 [~,indP,iC] = intersect(p.T{1},Ts);
                 
                 % creates the plot object
-                plot(Ts(iC),Yplt{i}(indP),'r.','tag','hEvent',...
-                            'UserData',i,'MarkerSize',20);
+                if pP.useFrm
+                    plot(indP,Yplt{i}(indP),'r.','tag','hEvent',...
+                                'UserData',i,'MarkerSize',20);                    
+                else
+                    plot(Ts(iC),Yplt{i}(indP),'r.','tag','hEvent',...
+                                'UserData',i,'MarkerSize',20);
+                end
+                
+                % plots the threshold marker
+                if pP.pltThresh
+                    yPltL = scaleSig(yThresh/xScl,i-1)*[1,1];
+                    plot(TT([1,end]),yPltL,'k--');
+                end
             end
             
             % plots the separation line
@@ -642,7 +698,7 @@ switch pP.pMet
         % sets the title/label strings
         pF.Title(1).String = tStr;
         pF.yLabel(1).String = 'Fly Index';
-        pF.xLabel(1).String = 'Time (sec)';               
+        pF.xLabel(1).String = xLblStr;
         
         % flips the vertical axis
         axis(hAx,'ij')
@@ -755,31 +811,25 @@ a = 1;
 % ----------------------------------------------------------------------- %
 
 % --- calculates the interframe speed
-function [V,X] = calcInterFrameSpeed(snTot,iApp,dT,cP)
+function [V,Vh,X] = calcInterFrameSpeed(snTot,iApp,dT,hF)
 
 % calculates the squared x-displacements
-X = getPosCoords(snTot.Px{iApp},cP);
-dP2 = calcCentralDiff(X).^2;
+X = snTot.Px{iApp};
+dP2 = diff([X(1,:);X],[],1).^2;
 
 % appends the y-displacement squared values (if available)
 if ~isempty(snTot.Py)
-    Y = getPosCoords(snTot.Py{iApp},cP);
-    dP2 = dP2 + calcCentralDiff(Y).^2;        
+    Y = snTot.Py{iApp};
+    dY = diff([Y(1,:);Y],[],1);
+    Vh = imfilter(abs(dY),hF)./dT;    
+    
+    dP2 = dP2 + dY.^2;
+else
+    Vh = NaN(size(dT));
 end
 
 % calculates the speed over all frames
-V = sqrt(dP2)./dT;
-
-% --- calculates the central difference calculations
-function dZ = calcCentralDiff(Z)
-
-% memory allocation
-dZ = zeros(size(Z));
-
-% calculates the central derivatives (end points are forward difference)
-dZ(1,:) = diff(Z(1:2));
-dZ(2:end-1,:) = Z(3:end,:) - Z(1:(end-2),:);
-dZ(end,:) = diff(Z((end-1):end,:));
+V = imfilter(sqrt(dP2),hF)./dT;
 
 % --- calculates the height position of the flies
 function Y = calcPosHeights(Px)
@@ -875,14 +925,6 @@ if any(iiP)
     end
 end
 
-% --- retrieves the position coordinates (smooths is necessary)
-function Y = getPosCoords(Y,cP)
-
-if cP.useSm
-    nSm = 2*cP.nSm + 1;
-    Y = cell2mat(cellfun(@(x)(smooth(x,nSm)),num2cell(Y,1),'un',0));
-end
-
 % --- calculates the metric scale factor (based on type)
 function xScl = calcScaleFactor(pMetT,sObj,varargin)
 
@@ -893,7 +935,35 @@ switch pMetT
         xScl = range(iC)*sObj.sgP.sFac;
 
     case 'Speed'
-        % case is the height
-        xScl = 1.05*max(cellfun(@max,sObj(~cellfun('isempty',sObj))));
-
+        % case is the speed
+        xScl = 1.05*max(cellfun(@max,sObj(~cellfun('isempty',sObj))));        
 end
+
+
+% --- retrieves the position coordinates (smooths is necessary)
+function Y = getPosCoords(Y,cP)
+
+if cP.useSm
+    nSm = 2*cP.nSm + 1;
+    Y = cell2mat(cellfun(@(x)(smooth(x,nSm)),num2cell(Y,1),'un',0));
+end
+
+% --- calculates the central difference calculations
+function dZ = calcBackwardDiff(Z)
+
+% memory allocation
+dZ = zeros(size(Z));
+
+% calculates the backward differences
+dZ(2:end,:) = Z(2:end,:) - Z(1:(end-1),:);
+
+% --- calculates the central difference calculations
+function dZ = calcCentralDiff(Z)
+
+% memory allocation
+dZ = zeros(size(Z));
+
+% calculates the central derivatives (end points are forward difference)
+dZ(1,:) = diff(Z(1:2));
+dZ(2:end-1,:) = Z(3:end,:) - Z(1:(end-2),:);
+dZ(end,:) = diff(Z((end-1):end,:));
