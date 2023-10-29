@@ -407,7 +407,7 @@ for i = 1:nExp
             % reduces the events to those that meet the duration tolerance
             jGrp = cellfun(@(x,v)(x(...
                 (cellfun(@(x)(diff(T0(x([1,end])))),x) >= cP.tEvent) & ...
-                 cellfun(@(x)(any(v(x) >= cP.vEventH)),x))),iGrp,VH,'un',0);
+                 cellfun(@(x)(all(v(x) >= cP.vEventH)),x))),iGrp,VH,'un',0);
 
             % sets the start, duration and avg speed of each event
             [tS,tE,vE,iE] = getEventProps(T0,VT,jGrp,nFrm0{i},tLim(i,:));  
