@@ -361,10 +361,10 @@ hP = getCurrentAxesProp('Parent');
 % ---------------------------------------- %
 
 % retrieves the formatting struct
-if (nGrp == 1)
+if nGrp == 1
     pF = retFormatStruct(pF,1);
 else
-    if (isempty(m)); szMx = 1; else szMx = max([m n]); end
+    if isempty(m); szMx = 1; else; szMx = max([m n]); end
     pF = retFormatStruct(pF,szMx);
 end
 
