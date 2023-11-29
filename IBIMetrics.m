@@ -238,7 +238,12 @@ for i = 1:nExp
     iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
     
     % determines the points where there is a large time gap
-    Tp = snTot(i).iExpt.Timing.Tp*3;
+    if isfield(snTot(i).iExpt.Timing,'Tp')
+        Tp = snTot(i).iExpt.Timing.Tp*3;
+    else
+        Tp = 1e10;
+    end
+        
     indT{i} = find(diff(T{i}) > Tp);
     
     % sets the relevant time points and apparatus indices for this expt
@@ -316,8 +321,8 @@ for i = 1:nApp
                 
             % sets the raw action initiation values
             kk = ~cellfun('isempty',tGrpStop);
-            ifok = find(snTot(j).iMov.flyok{i});
-            IBIR(j,ifok(kk)) = tGrpStop(kk);
+%             ifok = find(snTot(j).iMov.flyok{i});
+            IBIR(j,1:sum(kk)) = tGrpStop(kk);
         end        
     end
     

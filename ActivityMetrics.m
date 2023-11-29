@@ -387,7 +387,8 @@ for i = 1:nApp
                 % experiment (only if fly is within specific region)
                 MBL = cellfun(@(x,y)(mean(x(y),'omitnan')),tGrpMove,ii);
                 for k2 = 1:length(ifok)
-                    plotD(i).MBL{1,ifok(k2),j}(indMBL(k)) = MBL(k2);
+                    plotD(i).MBL{1,k2,j}(indMBL(k)) = MBL(k2);
+%                     plotD(i).MBL{1,ifok(k2),j}(indMBL(k)) = MBL(k2);
                 end
             end
               
@@ -420,9 +421,13 @@ for i = 1:nApp
                 
                 % calculates the final AI values
                 for k2 = 1:length(ifok)
-                    plotD(i).AI{1,ifok(k2),j}(k) = nStart(k2)/tStop(k2);
-                    plotD(i).NS{1,ifok(k2),j}(k) = nStart(k2)+dnS(k2);
-                    plotD(i).TS{1,ifok(k2),j}(k) = tStop(k2);
+                    plotD(i).AI{1,k2,j}(k) = nStart(k2)/tStop(k2);
+                    plotD(i).NS{1,k2,j}(k) = nStart(k2)+dnS(k2);
+                    plotD(i).TS{1,k2,j}(k) = tStop(k2);
+                    
+%                     plotD(i).AI{1,ifok(k2),j}(k) = nStart(k2)/tStop(k2);
+%                     plotD(i).NS{1,ifok(k2),j}(k) = nStart(k2)+dnS(k2);
+%                     plotD(i).TS{1,ifok(k2),j}(k) = tStop(k2);
                 end
             end                    
         end        

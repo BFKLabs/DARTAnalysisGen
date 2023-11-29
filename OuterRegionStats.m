@@ -215,8 +215,8 @@ for i = 1:nExp
         k = iApp(j);
         [dPx,dPy,R] = get2DCoordsBG(snTot(i),k); 
 
-        % determines the edge position flags for each fly (over all frames)
-        onEdge = detFlyEdgePos(dPx,dPy,R,cP,sFac);                 
+        % determines the edge position flags for each fly (over all frames)        
+        onEdge = detFlyEdgePos(dPx,dPy,R,cP,sFac);
         
         % calculates the outer region statistics for all flies
         rPosM = cellfun(@(x,y,z)(calcOuterRegionStats(Texp,x,y,z,sFac)),...
@@ -341,7 +341,12 @@ function rPosM = calcOuterRegionStats(T,onEdge,X,Y,sFac)
 
 % determines the index groups of the points within the inner/outer regions
 rPosM = struct('nX',NaN,'prOut',NaN,'R',NaN);
-[inGrp,outGrp] = deal(getGroupIndex(~onEdge),getGroupIndex(onEdge));
+if all(isnan(onEdge))
+    return
+else
+    onE = logical(onEdge);
+    [inGrp,outGrp] = deal(getGroupIndex(~onE),getGroupIndex(onE));
+end
 
 % determines the number of outer region crossings and proportion of the
 % time where the fly is located within the inner region

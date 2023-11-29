@@ -317,9 +317,9 @@ for i = 1:nExp
     for j = 1:length(iApp)  
         % initialisations        
         [k,A] = deal(iApp(j),sum(isMove{j}(isOK,:),1)/sum(isOK));
-        ifok = find(snTot(i).iMov.flyok{k});
-        
-        % sets the metric values
+
+        % sets the metric value        
+        ifok = 1:length(A);
         plotD(k).Tw(1,ifok,i) = num2cell(Tmlt*A);
         plotD(k).Ts(1,ifok,i) = num2cell(Tmlt*(1-A));
         plotD(k).V(1,ifok,i) = num2cell(Vtot{j});
@@ -327,6 +327,17 @@ for i = 1:nExp
         plotD(k).D(1,ifok,i) = num2cell(Dact{j}/1000);
         plotD(k).A(1,ifok,i) = num2cell(100*A);
         plotD(k).I(1,ifok,i) = num2cell(100*(1-A));
+        
+        
+%         % sets the metric value        
+%         ifok = find(snTot(i).iMov.flyok{k});        
+%         plotD(k).Tw(1,ifok,i) = num2cell(Tmlt*A);
+%         plotD(k).Ts(1,ifok,i) = num2cell(Tmlt*(1-A));
+%         plotD(k).V(1,ifok,i) = num2cell(Vtot{j});
+%         plotD(k).Va(1,ifok,i) = num2cell(Vact{j});
+%         plotD(k).D(1,ifok,i) = num2cell(Dact{j}/1000);
+%         plotD(k).A(1,ifok,i) = num2cell(100*A);
+%         plotD(k).I(1,ifok,i) = num2cell(100*(1-A));
     end       
 end
 

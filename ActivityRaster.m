@@ -209,7 +209,7 @@ for i = 1:nExp
     % sets the 
     TT{i} = Tmid(isOK);
     for j = 1:length(isMove)
-        fok = snTot(i).iMov.flyok{iApp(j)};
+        fok = 1:sum(snTot(i).iMov.flyok{iApp(j)});
         plotD(iApp(j)).I(1,fok,i) = num2cell(isMove{j}(isOK,:),1);
         plotD(iApp(j)).TT{i} = TT{i}*60;
     end

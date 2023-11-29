@@ -274,8 +274,11 @@ for i = 1:nExp
             xiY = 1:size(Z,2);
             plotD(iApp(j)).Y(1,xiY,i) = num2cell(Z,1);
         else
-            fok = snTot(i).iMov.flyok{iApp(j)};
-            plotD(iApp(j)).Y(1,fok,i) = num2cell(Z,1);
+            kk = 1:size(Z,2);
+            plotD(iApp(j)).Y(1,kk,i) = num2cell(Z,1);            
+            
+%             fok = snTot(i).iMov.flyok{iApp(j)};
+%             plotD(iApp(j)).Y(1,fok,i) = num2cell(Z,1);
         end
     end       
 end
