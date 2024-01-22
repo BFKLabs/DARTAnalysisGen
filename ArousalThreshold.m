@@ -233,7 +233,11 @@ plotD = initPlotValueStruct(snTot,pData,cP,...
          'indRIm_md',[],'indRIm_lq',[],'indRIm_uq',[]);
 
 % retrieves the start/finish stimuli times
-Ts = arrayfun(@(x)(x.stimP.Motor.Ch.Ts),snTot,'un',0);
+if isfield(snTot(1).stimP.Motor,'Ch1')
+    Ts = arrayfun(@(x)(x.stimP.Motor.Ch1.Ts),snTot,'un',0);
+else
+    Ts = arrayfun(@(x)(x.stimP.Motor.Ch.Ts),snTot,'un',0);
+end
      
 % ---------------------------------------------------- %
 % --- STIMULI TRACE & IMMOBILITY TIME CALCULATIONS --- %
