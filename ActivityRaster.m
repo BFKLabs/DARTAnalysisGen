@@ -38,7 +38,7 @@ function rI = initFuncReqInfo(pData)
 
 % memory allocation
 rI = struct('Scope',[],'Dur',[],'Shape',[],...
-            'Stim',[],'Spec',[],'SpecFcn',[]);
+            'Stim',[],'Spec',[],'SpecFcn',[],'ClassicFcn',true);
 
 % sets the struct fields
 rI.Scope = setFuncScopeString(pData.Type);

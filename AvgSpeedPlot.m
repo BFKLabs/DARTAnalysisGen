@@ -2,8 +2,8 @@
 %     experiment for a specified time bin duration
 function pData = AvgSpeedPlot(snTot)
 
-% if no plot data struct is given, then initialise a new one
-pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);    
+% initialise the plot data struct
+pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 
 % sets the function name/type
 pData.Name = 'Population Movement (Full Experiment)';
