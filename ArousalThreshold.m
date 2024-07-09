@@ -190,7 +190,8 @@ end
 
 % determines the currently loaded experimental file is valid for
 % calculating arousal threshold
-NLvl0 = length(snTot(1).sTrainEx.sTrain.blkInfo);
+bInfo = reduceStimBlockInfo(snTot(1).sTrainEx.sTrain.blkInfo);
+NLvl0 = length(bInfo);
 if NLvl0 == 1
     eStr = {'Error! Single-phase only stimuli events detected within data set.';
         'To calculate arousal threshold, choose a multi-phase stimuli experiment.'};
@@ -207,7 +208,6 @@ cP.movType = 'Absolute Speed';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
-bInfo = snTot(1).sTrainEx.sTrain.blkInfo;
 [nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 nGrp = str2double(cP.nGrp);
 
