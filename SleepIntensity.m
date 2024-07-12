@@ -508,7 +508,7 @@ for i = 1:nApp
             [p,Yfit,gof] = fitSignalExp(plotD(i).T(jj),Ydata,cP);
             plotD(i).gof = cellfun(@(x)(x(:)'),gof,'un',0);
             plotD(i).Y_fit = cellfun(@(x)....
-                                ([zeros(tBefore,nGrp);x]),Yfit,'un',0);                                        
+                                ([zeros(tBefore,nGrp);x]),Yfit,'un',0);               
                             
             % sets the SR fitted parameters
             plotD(i) = setSRFittedPara(plotD(i),p,tBefore,nGrp);                                    

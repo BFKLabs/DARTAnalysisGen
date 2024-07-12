@@ -235,6 +235,8 @@ plotD = initPlotValueStruct(snTot,pData,cP,...
 % retrieves the start/finish stimuli times
 if isfield(snTot(1).stimP.Motor,'Ch1')
     Ts = arrayfun(@(x)(x.stimP.Motor.Ch1.Ts),snTot,'un',0);
+elseif isfield(snTot(1).stimP.Motor,'AllCh')    
+    Ts = arrayfun(@(x)(x.stimP.Motor.AllCh.Ts),snTot,'un',0);    
 else
     Ts = arrayfun(@(x)(x.stimP.Motor.Ch.Ts),snTot,'un',0);
 end
@@ -276,6 +278,9 @@ for i = 1:nExp
                 
                 % sets the raw data for all flies
                 plotD(j).indR(xiR,xiC,i) = indReactNw{j};
+                if xiR(end) < size(plotD(j).indR,1)
+                    plotD(j).indR = plotD(j).indR(xiR,:,:);
+                end
                 
                 % sets all the pre-stim moving fly to NaN values
                 for k = 1:numel(indReactNw{j})
