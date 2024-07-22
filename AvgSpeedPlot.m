@@ -229,6 +229,7 @@ for j = 1:nApp
         if ~isempty(snTot.Px{j})   
             % calculates the binned fly movement speed/midline crossings
             V = calcBinnedFlyMovement(snTot,Ttot,indB,cP,j,flyok{j});
+            
         else
             % otherwise, set a NaN array
             V = repmat({NaN(1,length(flyok{j}))},length(indB),1); 

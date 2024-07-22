@@ -781,7 +781,7 @@ if nGrpT > 1
     set(hLg,'position',lgPos)
     
     % resets the axis height
-    axPos(4) = (lgPos(2) + lgPos(4)/2) - (axPos(2) + 3*dY);
+    axPos(4) = (lgPos(2) + lgPos(4)/2) - (axPos(2) + 4*dY);
     set(hAxM,'position',axPos)
 end
 
