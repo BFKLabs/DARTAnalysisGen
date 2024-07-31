@@ -200,6 +200,12 @@ if NLvl0 == 1
     return
 end
 
+% sorts the amplitudes by the initial offset time
+tOfs0 = arrayfun(@(x)(x.sPara.tOfs),bInfo);
+sAmp0 = arrayfun(@(x)(x.sPara.sAmp),bInfo);
+[~,iS] = sort(tOfs0);
+[bInfo,sAmp0] = deal(bInfo(iS),sAmp0(iS));
+
 % sets the movement calculation type
 cP.movType = 'Absolute Speed';
 
@@ -221,7 +227,7 @@ iStim = arrayfun(@(x)(sprintf('Stim #%i',x)),(1:24/length(Tgrp))','un',0);
 
 % sets the y-axis level strings
 Nlvl = NLvl0 + 2;
-sAmp = arrayfun(@(x)(sprintf('%i%s',x.sPara.sAmp,char(37))),bInfo,'un',0);
+sAmp = arrayfun(@(x)(sprintf('%i%s',x,char(37))),sAmp0,'un',0);
 yStr = [{'MF'};sAmp;{'NR'}];       
 
 % initialises the plot value data struct
