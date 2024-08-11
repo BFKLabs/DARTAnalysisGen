@@ -157,7 +157,7 @@ if (nargin == 3)
     cP = retParaStruct(pData.cP,gPara);
     
     % sets the movement type (based on the global parameters)
-    if (strcmp(gPara.movType,'Absolute Location'))
+    if strcmp(gPara.movType,'Absolute Location')
         cP.movType = 'Absolute Speed';
     end
 end

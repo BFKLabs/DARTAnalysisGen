@@ -204,7 +204,7 @@ end
 tOfs0 = arrayfun(@(x)(x.sPara.tOfs),bInfo);
 sAmp0 = arrayfun(@(x)(x.sPara.sAmp),bInfo);
 [~,iS] = sort(tOfs0);
-[bInfo,sAmp0] = deal(bInfo(iS),sAmp0(iS));
+sAmp0 = sAmp0(iS);
 
 % sets the movement calculation type
 cP.movType = 'Absolute Speed';
