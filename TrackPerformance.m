@@ -274,13 +274,12 @@ set(hAx,'xlim',xLim,'ylim',[1 nFly]+0.5*[-1 1],'ytick',1:nFly,...
 % resets the axis positions
 axis(hAx,'ij')
 
-%
+% formats the plot axes
 formatPlotAxis(hAx,pF,sP.pInd);
 resetAxesPos(hAx,1,1); 
 
-% if the plots do not exist, then create them for each apparatus
+% adds the seperator markers
 for i = 1:nFly-1    
-    % adds the seperator markers
     plot(xLim,(i+0.5)*[1 1],'k','linewidth',1)
 end
 

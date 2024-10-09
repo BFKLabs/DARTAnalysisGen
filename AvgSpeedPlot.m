@@ -53,18 +53,21 @@ rI.Spec = 'None';
 function cP = initCalcPara(snTot)
 
 % initialises the parameter struct
-nPara = 1;
+nPara = 2;
 cP = setParaFields(nPara);
 
 % sets the tab list names
 a = {'1 - General'};
 
 % sets the parameter fields
-cP(1) = setParaFields(a{1},'Number',60,...
-            'tBin','Activity Calculation Duration (sec)',[1 3600 false]);
+cP(1) = setParaFields(a{1},'Boolean',0,...
+            'calcInst','Calculate Instantaneous Speed');
+cP(2) = setParaFields(a{1},'Number',60,'tBin',...
+            'Activity Calculation Duration (sec)',[1 3600 false],{1,1});
 
 % sets the tool-tip strings
-cP(1).TTstr = 'Duration over which the population speed is averaged';
+cP(1).TTstr = 'Calculates instantaneous speed intead of binned speed';
+cP(2).TTstr = 'Duration over which the population speed is averaged';
 
 % adds the unique motor parameters
 cP = addUniqueMotorPara(cP,snTot);
@@ -184,17 +187,24 @@ end
 Ttot = cell2mat(snTot.T);
 flyok = snTot.iMov.flyok;
 
-% determines the binned indices (for time length, tBin) and determines the
-% bins which has at least two time points
-indB = detTimeBinIndices(Ttot,cP.tBin);
+% sets up the time vector and time binning arrays (if required)
+if cP.calcInst
+    % case is calculating instantaeous speed
+    T = Ttot(2:end);
+    [dT,isOK] = deal(diff(Ttot),true(size(T)));
+    [TD,indD] = deal(convertTime(T/60,'min','sec'),(1:length(T))');
+    
+else
+    % determines the binned indices (for time length, tBin) and determines 
+    % the bins which has at least two time points
+    indB = detTimeBinIndices(Ttot,cP.tBin);
+    [T,indB] = setBinnedTimeArray(Ttot,indB,cP.tBin);
 
-% creates the time vector for each of the time points
-[T,indB] = setBinnedTimeArray(Ttot,indB,cP.tBin);
-
-% determines the 
-indD = detTimeGroupIndexArray(T,snTot.iExpt(1),cP.tBin,cP.Tgrp0);
-TD = convertTime((cP.tBin*(1:length(T))' - cP.tBin/2)/60,'min','sec');
-isOK = find(~isnan(indD));
+    % determines the 
+    indD = detTimeGroupIndexArray(T,snTot.iExpt(1),cP.tBin,cP.Tgrp0);
+    isOK = find(~isnan(indD));
+    TD = convertTime((cP.tBin*(1:length(T))' - cP.tBin/2)/60,'min','sec');
+end
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,'movType',cP.movType,...
@@ -205,9 +215,9 @@ plotD = initPlotValueStruct(snTot,pData,cP,'movType',cP.movType,...
 wStr = {'Overall Progress'};
 h = ProgBar(wStr,'Average Speed Calculations');
 
-% ----------------------------- %
-% --- VELOCITY CALCULATIONS --- %
-% ----------------------------- %
+% -------------------------- %
+% --- SPEED CALCULATIONS --- %
+% -------------------------- %
 
 % determines the binned indices
 h.Update(1,'Determining Time Bin Indices...',1/(2+nApp));
@@ -226,9 +236,15 @@ for j = 1:nApp
     % determines if there any valid flies in the group
     if any(flyok{j})
         % only calculate if values exist...    
-        if ~isempty(snTot.Px{j})   
-            % calculates the binned fly movement speed/midline crossings
-            V = calcBinnedFlyMovement(snTot,Ttot,indB,cP,j,flyok{j});
+        if ~isempty(snTot.Px{j})
+            if cP.calcInst
+                % calculates the instantaneous speed
+                V = calcInstantSpeed(snTot,dT,j);
+            
+            else
+                % calculates binned fly movement speed/midline crossings
+                V = calcBinnedFlyMovement(snTot,Ttot,indB,cP,j,flyok{j});
+            end
             
         else
             % otherwise, set a NaN array
@@ -403,7 +419,7 @@ else
     if sP.Sub.isComb
         hAx = {createSubPlotAxes(hP)};
     else
-        hAx = cellfun(@(x)(createSubPlotAxes(hP,[m,n],x)),num2cell(1:nApp),'un',0);
+        hAx = arrayfun(@(x)(createSubPlotAxes(hP,[m,n],x)),1:nApp,'un',0);
     end
 end 
 
@@ -514,6 +530,23 @@ resetAxesPos(hAx,m,n);
 if sP.Sub.isComb
     resetLegendAxisPos(hAx{1},hLg,[1 1],-0.005)
 end
+
+% ----------------------------------------------------------------------- %
+% ---                     MISCELLANEOUS FUNCTION                      --- %
+% ----------------------------------------------------------------------- %
+
+% --- calculates the instantaneous speed
+function V = calcInstantSpeed(snTot,dT,ind)
+
+% sets calculates the squared displacement
+dP2 = diff(snTot.Px{ind},[],1).^2;
+if ~isempty(snTot.Py)
+    % case is a 2D experiments
+    dP2 = dP2 + diff(snTot.Py{ind},[],1).^2; 
+end
+
+% calculates the instantaneous speed
+V = num2cell(sqrt(dP2)./dT,2);
 
 % ----------------------------------------------------------------------- %
 % ---                         OUTPUT FUNCTION                         --- %
