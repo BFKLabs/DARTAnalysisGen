@@ -88,7 +88,7 @@ nPara = 7;
 pP = setParaFields(nPara);
 
 % sets the count string (based on tracking type)
-if detMltTrkStatus(snTot(1).iMov)
+if detMltTrkStatus(snTot.iMov)
     cStr = 'Plot Fly Count';
 else
     cStr = 'Plot Row Count';

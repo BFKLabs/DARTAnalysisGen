@@ -51,14 +51,15 @@ rI.Spec = 'None';
 function cP = initCalcPara(snTot)
 
 % initialises the parameter struct
-nPara = 1;
+nPara = 2;
 cP = setParaFields(nPara);
 
 % sets the tab list names
 a = {'1 - General'};
 
 % sets the plot parameter fields into the data struct
-cP(1) = setParaFields(a{1},'Number',50,'sRate','Signal Downsample Rate',[10 1000 1]);
+cP(1) = setParaFields(a{1},'Boolean',true,'useDS','Use Signal Downsampling');
+cP(2) = setParaFields(a{1},'Number',50,'sRate','Signal Downsample Rate',[10 1000 1],{1,2});
 
 % --- initialises the calculation parameter function --- %
 function pP = initPlotPara(snTot)
@@ -128,7 +129,11 @@ flyok = snTot.iMov.flyok;
 T = cell2mat(snTot.T);
 
 % sets the down-sampling rate indices
-ii = 1:cP.sRate:length(T);
+if cP.useDS
+    ii = 1:cP.sRate:length(T);
+else
+    ii = 1:length(T);
+end
 
 % memory allocation
 plotD = initPlotValueStruct(snTot,pData,cP,...
