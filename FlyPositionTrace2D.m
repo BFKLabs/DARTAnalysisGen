@@ -7,7 +7,7 @@ pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);
 
 % sets the function name/
 pData.Name = '2D Fly Position Traces';
-pData.Type = {'Indiv','Multi'};
+pData.Type = {'Indiv'};
 pData.fType = [2 1 1 3];
 pData.rI = initFuncReqInfo(pData);
 
@@ -155,7 +155,7 @@ if ~ok; plotD = []; return; end
 % ------------------------------------------- %
 
 % array dimensions
-isMT = detMltTrkStatus(snTot.iMov);
+isMT = detMltTrkStatus(snTot(1).iMov);
 [nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % initialises the plot value data struct
@@ -235,21 +235,23 @@ for i = 1:nApp
             % sets the x/y-coordinates
             j = cIDR(indC{k}(1),1);
             plotD(j).X = [plotD(j).X,Px{i}(indC{k})];
-            plotD(j).Y = [plotD(j).Y,Py{i}(indC{k})];           
-            
-            if i == nApp
-                % calculates the total displacement
+            plotD(j).Y = [plotD(j).Y,Py{i}(indC{k})];                       
+        end
+        
+        if i == nApp
+            % calculates the total displacement
+            for j = 1:length(plotD)
                 plotD(j).Davg = cellfun(@(x,y)(...
                     calcTotalDist(x,y)),plotD(j).X,plotD(j).Y);
 
                 % combines the coordinate arrays
                 plotD(j).X = cell2mat(plotD(j).X);
                 plotD(j).Y = cell2mat(plotD(j).Y);
-                
+
                 % sets the fly index strings
                 plotD(j) = setupIndexString(plotD(j));
             end
-        end
+        end        
         
     else
         % case is single tracking
@@ -318,6 +320,7 @@ col = num2cell(distinguishable_colors(nApp,'w'),2);
 % resets the title strings
 if isMT
     % case is multi-tracking
+    pF.Title = pF.Title(1);
     pF.Title.String = sprintf('Region %i',sP.pInd);
     
 else

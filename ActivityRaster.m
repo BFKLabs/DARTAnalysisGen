@@ -379,7 +379,7 @@ formatMultiXYLabels(hAx,pF,[m,n]);
 
 % simple error fix - plots the x-axis as it doesn't appear to be turning up
 % automatically for the MacOS version?
-if (ismac)
+if ismac
     for i = 1:length(hAx)    
         plot(get(hAx{i},'xlim'),(min(get(hAx{i},'ylim'))+eps)*[1 1],'k','linewidth',1.5) 
     end
@@ -387,7 +387,7 @@ end
 
 % creates a loadbar
 pause(0.05);
-try; delete(h); end
+try delete(h); catch; end
     
 % ----------------------------------------------------------------------- %
 % ---                         OUTPUT FUNCTION                         --- %
