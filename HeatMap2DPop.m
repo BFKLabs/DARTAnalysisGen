@@ -42,7 +42,7 @@ rI = struct('Scope',[],'Dur',[],'Shape',[],...
 % sets the struct fields
 rI.Scope = setFuncScopeString(pData.Type);
 rI.Dur = 'None';
-rI.Shape = '2D (Circle)';
+rI.Shape = '2D';
 rI.Stim = 'None';
 rI.Spec = 'None';
         
@@ -132,6 +132,7 @@ end
 
 % array dimensions
 dnDel = 5;
+mShape = snTotL.iMov.pInfo.mShape;
 [nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % initialises the plot value data struct
@@ -144,7 +145,7 @@ nG = cP.nGrid;
 % determines the points outside of the circle
 [y,x] = meshgrid(((1:nG)-0.5)/nG - 0.5); 
 isN = sqrt(x.^2 + y.^2) > 0.5;
-if (isDN); isN = [isN,true(nG,dnDel),isN]; end
+if isDN; isN = [isN,true(nG,dnDel),isN]; end
 
 % memory allocation
 szHM = nG*[1 (1+isDN)] + [0 dnDel*isDN];
@@ -170,8 +171,10 @@ for i = 1:nExp
     % calculates the video frame rate and experiment apparatus indices
     iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));    
     
-    % sets the relevant x/y-locations for the current experiment  
-    [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp);
+    % retrieves the 2D coordinates (based on region shape)
+    [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp);    
+        
+    % ensures the data is stored in cell arrays
     if ~iscell(dPx)
         [dPx,dPy,R] = deal({dPx},{dPy},{R});
     end
@@ -181,13 +184,23 @@ for i = 1:nExp
         isDay = detDayNightTimePoints(snTot(i));
     else        
         isDay = true(size(dPx{1},1),1);  
-    end
+    end        
     
     % determines which trace belongs to which sub-region. from this, scale
     % the data values
     for j = 1:length(iApp)
-        % sets the radius values
-        RR = repmat(R{j}(:)',size(dPx{j},1),1);        
+        % sets the x/y direction scale factors (based on shape)
+        switch mShape
+            case 'Circle'
+                % case is circular regions
+                [xScl,yScl] = deal(2*R{j}(:)');
+
+            case 'Rectangle'
+                % case is rectangular regions
+                [xScl,yScl] = deal(R{j}(1,:),R{j}(2,:));            
+        end        
+        
+        % sets the radius values       
         for k = 1:(1+isDN)
             % sets the day/night flags for the current phase
             if (k == 1)
@@ -198,9 +211,9 @@ for i = 1:nExp
             
             % sets the normalised x/y coordinates
             Px{1,iApp(j),k} = [Px{1,iApp(j),k},...
-                    num2cell((dPx{j}(iDN,:)+RR(iDN,:))./(2*RR(iDN,:)),1)];
+                    num2cell(dPx{j}(iDN,:)./xScl + 1/2,1)];
             Py{1,iApp(j),k} = [Py{1,iApp(j),k},...
-                    num2cell((dPy{j}(iDN,:)+RR(iDN,:))./(2*RR(iDN,:)),1)];
+                    num2cell(dPy{j}(iDN,:)./yScl + 1/2,1)];
         end
     end
 end    
@@ -216,8 +229,9 @@ for i = 1:nApp
 
             % sets the heatmap array for the given group
             if (~isempty(iPx))
-                ind = sub2ind(nG*[1 1],iPy,iPx);               
-                Ihm{i}(:,iCol) = Ihm{i}(:,iCol) + reshape(hist(ind,1:(nG^2)),nG*[1 1]);
+                ind = sub2ind(nG*[1 1],iPy,iPx);      
+                dIhm = reshape(hist(ind,1:(nG^2)),nG*[1 1]);
+                Ihm{i}(:,iCol) = Ihm{i}(:,iCol) + dIhm;
             end
         end
     end
@@ -275,8 +289,8 @@ cMap = [zeros(1,3);colormap('jet');ones(1,3)];
 Ymx = max(cellfun(@(x)(max(x(:))),Ihm));
 dcMap = 1/(size(cMap,1)-3);
 
-% paramters
-nG = cP.nGrid;
+% parameters
+mShape = snTot(1).iMov.pInfo.mShape;
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -302,9 +316,17 @@ for i = 1:nApp
     IhmF(1+(1:size(Ihm{i},1)),1+(1:size(Ihm{i},2))) = Ihm{i};
     
     % sets the heatmap edge and outline colours
-    Bnan = isnan(IhmF);        
-    IhmF(bwmorph(~Bnan,'dilate') & Bnan) = -dcMap;
-    IhmF(isnan(IhmF)) = Ymx+dcMap;    
+    switch mShape
+        case 'Circle'
+            % case is circular regions
+            Bnan = isnan(IhmF);        
+            IhmF(bwmorph(~Bnan,'dilate') & Bnan) = -dcMap;
+            IhmF(isnan(IhmF)) = Ymx + dcMap;
+            
+        case 'Rectangle'
+            % case is rectangular regions
+            IhmF(isnan(IhmF)) = 0;                        
+    end
     
     % creates the heatmap image
     imagesc(IhmF);

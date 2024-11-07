@@ -44,7 +44,7 @@ rI = struct('Scope',[],'Dur',[],'Shape',[],...
 % sets the struct fields
 rI.Scope = setFuncScopeString(pData.Type);
 rI.Dur = 'None';
-rI.Shape = '2D (Circle)';
+rI.Shape = '2D';
 rI.Stim = 'None';
 rI.Spec = 'None';
 
@@ -142,6 +142,7 @@ plotD = initPlotValueStruct(snTot,pData,cP,'Ihm',[]);
 
 % other memory allocations
 nG = cP.nGrid;
+mShape = snTot.iMov.pInfo.mShape;
 
 % determines the points outside of the circle
 [y,x] = meshgrid(((1:nG)-0.5)/nG - 0.5); 
@@ -160,8 +161,10 @@ szHM = nG*[1 (1+isDN)] + [0 dnDel*isDN];
 wStr = {'Retrieving 2D Coordinates'};
 h = ProgBar(wStr,'2D Heatmap Calculations');
 
-% sets the relevant x/y-locations for the current experiment  
+% retrieves the 2D coordinates (based on region shape)
 [dPx,dPy,R] = get2DCoordsBG(snTot,iApp);
+
+% ensures the data is stored in cell arrays
 if ~iscell(dPx)
     [dPx,dPy,R] = deal({dPx},{dPy},{R});
 end
@@ -187,8 +190,18 @@ for j = 1:length(iApp)
     % memory allocation
     [Px,Py] = deal(cell(1,1+isDN));
     
+    % sets the x/y direction scale factors (based on shape)
+    switch mShape
+        case 'Circle'
+            % case is circular regions
+            [xScl,yScl] = deal(2*R{j}(:)');
+            
+        case 'Rectangle'
+            % case is rectangular regions
+            [xScl,yScl] = deal(R{j}(1,:),R{j}(2,:));            
+    end
+    
     % calculates the normalised x-locations
-    RR = repmat(R{j}(:)',size(dPx{j},1),1);
     for k = 1:(1+isDN)
         % sets the day/night flags for the current phase
         if (k == 1)
@@ -197,8 +210,9 @@ for j = 1:length(iApp)
             iDN = ~isDay;
         end    
     
-        Px{k} = num2cell((dPx{j}(iDN,:)+RR(iDN,:))./(2*RR(iDN,:)),1);
-        Py{k} = num2cell((dPy{j}(iDN,:)+RR(iDN,:))./(2*RR(iDN,:)),1); 
+        % calculates the normalised coordinates
+        Px{k} = num2cell(dPx{j}(iDN,:)./xScl + 1/2,1);
+        Py{k} = num2cell(dPy{j}(iDN,:)./yScl + 1/2,1); 
     end
     
     % sets the heatmap
@@ -257,6 +271,7 @@ pF = pData.pF;
 % memory allocation and other dimensioning
 ind = sP.pInd;
 p = plotD{1}(ind);
+mShape = snTot.iMov.pInfo.mShape;
 
 % if there are no heatmaps for this group, then exit
 if (isempty(p.Ihm)); return; end
@@ -315,19 +330,27 @@ for j = 1:length(Ihm)
     
     % sets the row/column indices for the new heatmap
     iR = iRow*pP.pDel + (iRow-1)*szR + (szR:-1:1);
-    iC = iCol*pP.pDel + (iCol-1)*szC + (1:szC);
+    iC = iCol*pP.pDel + (iCol-1)*szC + (1:szC);    
 
     % sets the individual heatmap
-    IhmT(iR,iC) = Ihm{j};     
+    IhmT(iR,iC) = Ihm{j};
 end
 
 % reverses the order of the arrays
 IhmT = IhmT(end:-1:1,:);
 
-% sets the overall maximum values
-Bnan = isnan(IhmT);
-IhmT(bwmorph(~Bnan,'dilate',1) & Bnan) = -dcMap;
-IhmT(isnan(IhmT)) = Ymx+dcMap;
+% sets the heatmap edge and outline colours
+switch mShape
+    case 'Circle'
+        % case is circular regions
+        Bnan = isnan(IhmT);
+        IhmT(bwmorph(~Bnan,'dilate',1) & Bnan) = -dcMap;
+        IhmT(isnan(IhmT)) = Ymx + dcMap;
+        
+    case 'Rectangle'
+        % case is rectangular regions
+        IhmT(isnan(IhmT)) = 0;
+end
 
 % creates the heatmap image    
 set(get(hP,'parent'),'CurrentAxes',hAx);
