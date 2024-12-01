@@ -554,5 +554,3 @@ V = num2cell(sqrt(dP2)./dT,2);
 
 % --- function for calculating the data for the analysis figure --- %
 function [pData,plotD] = outFunc(pData,plotD,snTot)
-
-
