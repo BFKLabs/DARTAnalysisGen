@@ -6,7 +6,7 @@ function pData = InactivityPlotDN(snTot)
 pData = initPlotDataStruct(mfilename,@calcFunc,@plotFunc,@outFunc);    
 
 % sets the function name/type
-pData.Name = 'Temporal Proportional Activity (Long)';
+pData.Name = 'Temporal Inactivity (Long)';
 pData.Type = {'Pop','Multi'};
 pData.fType = [1 1 3 1];
 pData.rI = initFuncReqInfo(pData);
@@ -64,20 +64,26 @@ a = {'1 - General'};
 pList = {'Hourly Sleep Duration','Inactivity Proportion'};
 
 % sets the parameter fields
-cP(1) = setParaFields(a{1},'List',{1,pList},'inactType','Inactivity Calculation Type');
-cP(2) = setParaFields(a{1},'Number',60,'tBin','Time Bin Size (min)',[1 120 false],{1,1});
-cP(3) = setParaFields(a{1},'Number',10,'tMove','Inactivity Detection Duration (sec)',[1 300 false],{1,2});
+cP(1) = setParaFields(a{1},'List',...
+    {1,pList},'inactType','Inactivity Calculation Type');
+cP(2) = setParaFields(a{1},'Number',...
+    60,'tBin','Time Bin Size (min)',[1 120 false],{1,1});
+cP(3) = setParaFields(a{1},'Number',...
+    10,'tMove','Inactivity Detection Duration (sec)',[1 300 false],{1,2});
 
 % sets the tool-tip strings
 cP(1).TTstr = 'The method by which inactivity is calculated';
-cP(2).TTstr = 'Time period before stimuli used to calculate average speed';
-cP(3).TTstr = 'Time period after stimuli used to calculate average speed';
+cP(2).TTstr = 'Time period over which sleep duration is calculated';
+cP(3).TTstr = 'Time period over which inactivity proportion is calculated';
 
 % if short experiments only, then create alignment checkbox option
-if (all(convertTime(cellfun(@(x)(x{end}(end)),field2cell(snTot,'T')),'sec','hrs') <= Tmin))
+T = field2cell(snTot,'T');
+if all(convertTime(cellfun(@(x)(x{end}(end)),T),'sec','hrs') <= Tmin)
     % creates option
-    cP(4) = setParaFields([],'Boolean',0,'isAlign','Align All Experiments Start Points');
-    cP(4).TTstr = 'Aligns all experiments to their respective start times (Short experiments only)';    
+    cP(4) = setParaFields([],'Boolean',...
+        0,'isAlign','Align All Experiments Start Points');
+    cP(4).TTstr = ['Aligns all experiments to their respective ',...
+                   'start times (Short experiments only)'];    
 else
     % long experiment, so remove option
     cP = cP(1:3);
@@ -186,7 +192,7 @@ if (nargin == 3)
     cP = retParaStruct(pData.cP,gPara);
     
     % sets the movement type (based on the global parameters)
-    if (strcmp(gPara.movType,'Absolute Location'))
+    if strcmp(gPara.movType,'Absolute Location')
         cP.movType = 'Absolute Range';
     end
 end
@@ -203,24 +209,26 @@ end
 
 % allocates memory for the temporary data/time plot arrays
 if strcmp(cP.inactType,'Inactivity Proportion')
-    T = ((tMove/2):(tMove):convertTime(1,'day','sec'))';
+    tBinB = cP.tMove;
+    T = ((tMove/2):tMove:convertTime(1,'day','sec'))';
 else    
+    tBinB = 60;
     T = ((tBin/2):(tBin):convertTime(1,'day','sec'))';
 end
 
 % initialises the plot value data struct
 plotD = initPlotValueStruct(snTot,pData,cP,'T',T,'I',[],'I_mn',[],...
-                                 'I_sem',[],'I_min',[],'I_max',[],...
-                                 'inactType',cP.inactType,'hDay',gPara.TdayC); 
- 
+                             'I_sem',[],'I_min',[],'I_max',[],...
+                             'inactType',cP.inactType,'hDay',gPara.TdayC);                           
+                         
 % creates the waitbar figure
 wStr = {'Overall Progress','Inactivity Calculations'};
 wOfs = (nExp > 1); wStr = wStr((2-wOfs):end);
-h = ProgBar(wStr,'Inactivity Proportion Calculations');                             
+h = ProgBar(wStr,'Inactivity Proportion Calculations');
 
-% ----------------------------- %
-% --- VELOCITY CALCULATIONS --- %
-% ----------------------------- %
+% ------------------------------- %
+% --- INACTIVITY CALCULATIONS --- %
+% ------------------------------- %
 
 % loops through each of the experiments calculating the velocity values
 for i = 1:nExp 
@@ -237,62 +245,63 @@ for i = 1:nExp
 
     % determines the index offset
     Ttot = cell2mat(snTot(i).T);
-    flyok = snTot(i).iMov.flyok;    
+    flyok = snTot(i).iMov.flyok;
 
     % determines the binned indices (for time length, tBin) and determines the
     % bins which has at least two time points
     h.Update(1+wOfs,'Determining Time Bin Indices...',0.25);
-    if strcmp(cP.inactType,'Inactivity Proportion')
-        indB = detTimeBinIndices(Ttot,cP.tMove);
-    else
-        indB = detTimeBinIndices(Ttot,60);        
-    end
+    indB = detTimeBinIndices(Ttot,tBinB);
             
     % calculates the binned activity 
     for j = 1:nApp
-        % calculates the inactivity metrics based on the calculation type
-        if ~isempty(snTot(i).Px{j})
-            if strcmp(cP.inactType,'Inactivity Proportion')
-                % updates the waitbar figure
-                wStrNw = sprintf(['Calculating Proportional Inactivity ',...
-                                  '(Region %i of %i)'],j,nApp);
-                if h.Update(1+wOfs,wStrNw,0.50*(1+(j/(nApp+1))))
-                    % if the user cancelled, then exit the function
-                    [plotD,ok] = deal([],false);
-                    return                       
-                end
+        % if there are no coordinates, then continue
+        if isempty(snTot(i).Px{j})
+            continue
+        end
+            
+        % calculates the inactivity metrics based on the calculation type        
+        if strcmp(cP.inactType,'Inactivity Proportion')
+            % updates the waitbar figure
+            wStrNw = sprintf(['Calculating Proportional Inactivity ',...
+                              '(Region %i of %i)'],j,nApp);
+            if h.Update(1+wOfs,wStrNw,0.50*(1+(j/(nApp+1))))
+                % if the user cancelled, then exit the function
+                [plotD,ok] = deal([],false);
+                return                       
+            end
 
-                % determines the time group index array
-                [Tnw,indB] = setBinnedTimeArray(Ttot,indB,cP.tMove);
-                indD = detTimeGroupIndexArray(...
-                                Tnw,snTot(i).iExpt(1),cP.tMove,cP.Tgrp0);        
-                
-                % calculates the binned activity
-                Anw = calcBinnedActivity(snTot(i),Ttot,indB,cP,j,flyok{j});    
-                Inw = cellfun(@(x)(~x),Anw,'un',0);
+            % determines the time group index array
+            [Tnw,indB] = setBinnedTimeArray(Ttot,indB,cP.tMove);
+            indD = detTimeGroupIndexArray(...
+                            Tnw,snTot(i).iExpt(1),cP.tMove,cP.Tgrp0);
 
-                % sets the raw values into the storage array
-                plotD(j) = setRawDataValues(...
-                                plotD(j),snTot(i),Inw,indD,'I',i,j,1);
-            else
-                % updates the waitbar figure
-                wStrNw = sprintf(['Calculating Sleep Metrics ',...
-                                  '(Region %i of %i)'],j,nApp);
-                if h.Update(1+wOfs,wStrNw,0.50*(1+(j/(nApp+1))))
-                    % if the user cancelled, then exit the function
-                    [plotD,ok] = deal([],false);
-                    return                       
-                end                    
+            % calculates the binned activity
+            Anw = calcBinnedActivity(snTot(i),Ttot,indB,cP,j,flyok{j});    
+            Inw = cellfun(@(x)(~x),Anw,'un',0);
 
-                % sets the metric values
-                cP2 = cP; cP2.tMove = 5;
-                [~,Inw] = calcSleepMetrics(...
-                                    snTot(i),Ttot,indB,cP2,j,flyok{j}); 
-                
-                % sets the raw values into the storage array
-                plotD(j) = setRawDataValues(...
-                                    plotD(j),snTot(i),Inw,[],'I',i,j,2);
-            end           
+            % sets the raw values into the storage array
+            plotD(j) = setRawDataValues(...
+                            plotD(j),snTot(i),Inw,indD,'I',i,j,1);
+
+        else
+            % updates the waitbar figure
+            wStrNw = sprintf(['Calculating Sleep Metrics ',...
+                              '(Region %i of %i)'],j,nApp);
+            if h.Update(1+wOfs,wStrNw,0.50*(1+(j/(nApp+1))))
+                % if the user cancelled, then exit the function
+                [plotD,ok] = deal([],false);
+                return                       
+            end                    
+
+            % sets the metric values
+            cP2 = cP; 
+            cP2.tMove = 5;
+            [~,Inw] = calcSleepMetrics(...
+                                snTot(i),Ttot,indB,cP2,j,flyok{j}); 
+
+            % sets the raw values into the storage array
+            plotD(j) = setRawDataValues(...
+                                plotD(j),snTot(i),Inw,[],'I',i,j,2);
         end
     end
 end                        
@@ -308,14 +317,8 @@ for j = 1:nApp
         return
     end                         
                                            
-    % averages the data over the 24 hour cycle     
-    if strcmp(cP.inactType,'Inactivity Proportion')
-        % calculates the statistical metrics
-        plotD(j) = calcMetricStats(plotD(j),'I');
-    else        
-        % calculates the statistical metrics
-        plotD(j) = calcMetricStats(plotD(j),'I');  
-    end
+    % calculates the statistical metrics
+    plotD(j) = calcMetricStats(plotD(j),'I');
 end
 
 % closes the waitbar figure
@@ -357,7 +360,7 @@ hP = getCurrentAxesProp('Parent');
 % ---------------------------------------- %
     
 % sets the subplot titles
-if (sP.Sub.isComb)
+if sP.Sub.isComb
     % case is combining, so remove the titles    
     [pF.xLabel.ind,pF.yLabel.ind] = deal(1);  
     [pF.Legend.String,m,n] = deal(snTot(1).iMov.pInfo.gName(ind),1,1);
@@ -377,9 +380,9 @@ end
 pF.yLabel.String = '% Inactivity'; 
 
 % sets the time axis properties
-if (isempty(pF.xLabel.String))
+if isempty(pF.xLabel.String)
     % case is using the absolute time axis
-    if (pP.isZeitG)            
+    if pP.isZeitG
         % case is using Zeitgeiber time
         pF.xLabel.String = 'Zeitgeiber Time';
     else
@@ -389,7 +392,7 @@ if (isempty(pF.xLabel.String))
 end
 
 % sets the time axis properties
-if (strcmp(p(1).inactType,'Inactivity Proportion'))
+if strcmp(p(1).inactType,'Inactivity Proportion')
     [yLim,pY] = deal(100);
 else
     % case is using Zeitgeiber time
@@ -403,7 +406,7 @@ end
 % pData.pF = pF;
 
 % retrieves the formatting struct
-if (isempty(m)); szMx = 1; else; szMx = max([m n]); end
+if isempty(m); szMx = 1; else; szMx = max([m n]); end
 pF = retFormatStruct(pF,szMx);
 
 % ----------------------- %
@@ -412,11 +415,14 @@ pF = retFormatStruct(pF,szMx);
 
 % memory allocation
 hPlot = cell(nApp,1);
-    
-% sets the trace colours
+
+% other initialisations
+Tax = [0 24];
 dT = diff(p(1).T(1:2));
-col = num2cell(distinguishable_colors(nApp,'w'),2);
 hAx = cell(1+(nApp-1)*(~sP.Sub.isComb),1);
+
+% sets the trace colours
+col = num2cell(distinguishable_colors(nApp,'w'),2);
     
 % loops through all the subplots 
 for j = 1:nApp
@@ -424,7 +430,7 @@ for j = 1:nApp
     i = ind(j);
 
     % sets the subplot to be plotted on and updates the properties
-    if (sP.Sub.isComb)
+    if sP.Sub.isComb
         % case is combining, so use the main axis
         colNw = col{j};
         if (j == 1)
@@ -450,20 +456,19 @@ for j = 1:nApp
     Tplt = [(p(j).T(1)-dT/2);p(j).T;(p(j).T(end)+dT/2)]*tMlt;
 
     % sets the plot data values
-    if (isempty(p(j).I_mn))
+    if isempty(p(j).I_mn)
         Yplt = NaN(size(Tplt));
     else
-        Yplt = reshape(p(j).I_mn,1,length(p(j).I_mn));
-        Yplt = [mean(Yplt([1 end])),Yplt,mean(Yplt([1 end]))]';
-    end                
+        Yplt = [mean(Yplt([1 end]));p(j).I_mn(:);mean(Yplt([1 end]))];
+    end
 
     % plots the signal SEM (if checked)
-    if (pP.plotErr)                              
-        switch (pP.errType)
-            case ('SEM')
+    if pP.plotErr                              
+        switch pP.errType
+            case 'SEM'
                 % sets the error signal
                 YpltS = reshape(p(j).I_sem,length(p(j).I_sem),1);            
-            case ('Min/Max')           
+            case 'Min/Max'
                 % sets the error signal
                 p(j).I_min = reshape(p(j).I_min,length(p(j).I_min),1);
                 p(j).I_max = reshape(p(j).I_max,length(p(j).I_max),1);                                            
@@ -471,7 +476,7 @@ for j = 1:nApp
         end
 
         % sets the error signal and plots the error bars
-        if (~isempty(p(j).I_mn))
+        if ~isempty(p(j).I_mn)
             Yend = mean(YpltS([1 end],:),1);               
             Yerr = [Yend;YpltS;Yend];       
 
@@ -481,12 +486,12 @@ for j = 1:nApp
 
     % plots the traces (time scaled to hours)   
     hPlotNw = plot(hAxNw,Tplt,pY*Yplt,'color',colNw,'linewidth',pP.lWid);
-    if (sP.Sub.isComb); hPlot{j} = hPlotNw; end
+    if sP.Sub.isComb; hPlot{j} = hPlotNw; end
     set(hAxNw,'linewidth',0.5)        
 
     % turns the grid on/off depending on the flag values
-    if (j == 1) || (~sP.Sub.isComb)
-        if (pP.plotGrid)
+    if (j == 1) || ~sP.Sub.isComb
+        if pP.plotGrid
             % grid is turned on
             grid on
         else
@@ -498,13 +503,12 @@ for j = 1:nApp
         set(hAxNw,'xlim',[0 24],'ylim',[0 yLim])        
         
         % case is using the absolute time axis
-        Tax = [0 24];
-        if (pP.isZeitG)            
+        if pP.isZeitG         
             % case is using Zeitgeiber time
             setZeitGTimeAxis(hAxNw,convertTime(Tax,'hrs','sec'));        
         else
             % if plotting day/night, then set absolute time
-            if (absTime)
+            if absTime
                 setAbsTimeAxis(hAxNw,convertTime(Tax,'hrs','sec'));  
             end
         end      
@@ -516,11 +520,12 @@ for j = 1:nApp
     end
 end
 
+% ------------------------------ %
 % --- PLOT AXES REFORMATTING --- %
 % ------------------------------ %
 
 % sets the non-aligned x/y labels
-if (~sP.Sub.isComb)
+if ~sP.Sub.isComb
     formatMultiXYLabels(hAx,pF,[m,n]);
 end
 
@@ -528,14 +533,14 @@ end
 resetAxesPos(hAx,m,n,[0 0.025]); 
 
 % updates the figure if plotting a combined figure
-if (sP.Sub.isComb)    
+if sP.Sub.isComb 
     % creates the legend object
     hLg = createLegendObj(hPlot,pF.Legend);
-
-    % resets the legend position           
+    
+    % resets the legend position
     pLg = get(hLg,'position');
-    set(hLg,'Position',[(1-pLg(3)),0.5*(1-pLg(4)),pLg(3:4)])   
-    resetLegendPos(hLg,hAx)       
+    set(hLg,'Position',[(1-pLg(3)),0.5*(1-pLg(4)),pLg(3:4)])
+    resetLegendPos(hLg,hAx)
 end
 
 % ----------------------------------------------------------------------- %
@@ -548,20 +553,19 @@ function [pData,plotD] = outFunc(pData,plotD,snTot)
 % initialisations
 cP = retParaStruct(pData.cP);
 
-%
-if (strcmp(cP.inactType,'Hourly Sleep Duration'))
-    % ret
+% re-orders the hourly sleep duration
+if strcmp(cP.inactType,'Hourly Sleep Duration')
+    % retrieves the variable string
     Var = field2cell(pData.oP.yVar,'Var');
     for i = 1:length(Var)
-        if (strcmp(Var{i},'I'))
+        if strcmp(Var{i},'I')
             for j = 1:length(plotD)
-                Ynw = eval(sprintf('plotD(j).%s;',Var{i}));
-                Ynw = cellfun(@(x)(x(:)),Ynw,'un',0);
-                eval(sprintf('plotD(j).%s = Ynw;',Var{i}));
+                Ynw = plotD(j).(Var{i});
+                plotD(j).(Var{i}) = cellfun(@(x)(x(:)),Ynw,'un',0);
             end
         else
             for j = 1:length(plotD)
-                eval(sprintf('plotD(j).%s = plotD(j).%s(:);',Var{i},Var{i}));
+                plotD(j).(Var{i}) = arr2vec(plotD(j).(Var{i}));
             end
         end
     end
