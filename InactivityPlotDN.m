@@ -459,7 +459,8 @@ for j = 1:nApp
     if isempty(p(j).I_mn)
         Yplt = NaN(size(Tplt));
     else
-        Yplt = [mean(Yplt([1 end]));p(j).I_mn(:);mean(Yplt([1 end]))];
+        YpltE = mean(p(j).I_mn([1 end]));
+        Yplt = [YpltE;p(j).I_mn(:);YpltE];
     end
 
     % plots the signal SEM (if checked)

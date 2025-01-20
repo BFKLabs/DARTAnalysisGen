@@ -17,7 +17,7 @@ if nargin == 1
     % parameter data struct initialisation
     snTotL = snTot(1);
     pData.cP = initCalcPara(snTot);
-    pData.pP = initPlotPara(snTot);
+    pData.pP = initPlotPara(snTotL);
     pData.oP = initOutputPara(snTot);
     pData.pF = initPlotFormat(snTotL);
     
@@ -77,8 +77,8 @@ function pP = initPlotPara(snTot)
 
 % initialises the parameter struct
 isLong = ~detIfShortExpt(field2cell(snTot,'T'));
-Ts = getMotorFiringTimes(snTot.stimP);
-hasStim = ~isempty(Ts);
+Ts = arrayfun(@(x)(getMotorFiringTimes(x.stimP)),snTot,'un',0);
+hasStim = any(~cellfun('isempty',Ts));
 nPara = 2 + hasStim + 2*isLong;
 pP = setParaFields(nPara);
 
