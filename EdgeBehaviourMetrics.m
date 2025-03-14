@@ -1433,7 +1433,11 @@ else
     [f,x] = deal((f(ii) - f(ii(1)))/(f(ii(end)) - f(ii(1))),x(ii));
 
     % set the interpolation array
-    fCDF = min(1,max(0,interp1(x,f,xCDF,'linear','extrap')));
+    if length(f) < 2
+        fCDF = double(xCDF > x);
+    else
+        fCDF = min(1,max(0,interp1(x,f,xCDF,'linear','extrap')));
+    end
 end
 
 % --- sets up the fitted parameter text string
