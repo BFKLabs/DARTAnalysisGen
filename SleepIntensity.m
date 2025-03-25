@@ -429,8 +429,9 @@ for i = 1:nExp
     end
         
     % calculates the new sleep intensity data
-    [YcountNw,YcountRNw,XbinNw,YbinNw,ok] = ...
-                            getStimuliResponseData(snTot(i),cP,h,wOfs);        
+%     [YcountNw,YcountRNw,~,XbinNw,YbinNw,ok] = ...
+%                             getStimuliResponseData(snTot(i),cP,h,wOfs);        
+    [pSR,ok] = getStimuliResponseData(snTot(i),cP,h,wOfs);
     if ~ok
         % if the user cancelled, then exit the function
         plotD = [];
@@ -439,11 +440,11 @@ for i = 1:nExp
         % otherwise, append the data to the arrays        
         for j = 1:nApp
             % appends the x-positional data to the arrays
-            Nc = [1 1 numel(YcountNw{j})];
-            if ((Nc(3) > 0) && (~isempty(XbinNw)))
+            Nc = [1 1 numel(pSR.Ycount{j})];
+            if ((Nc(3) > 0) && (~isempty(pSR.Xbin)))
                 XbinNwT = cell2cell(cellfun(@(y)(cellfun(@(x)(cell2mat(x)),...
                                 num2cell(cell2cell(y,0),2),'un',0)),...
-                                num2cell(XbinNw{j},1),'un',0),0);
+                                num2cell(pSR.Xbin{j},1),'un',0),0);
                 for k1 = 1:nGrp
                     for k2 = 1:(1+cP.sepDN)
                         P{j,1}{k1,k2} = [P{j,1}{k1,k2},XbinNwT{k1,k2}];
@@ -452,10 +453,10 @@ for i = 1:nExp
             end
             
             % appends the y-positional data to the arrays
-            if (Nc(3) > 0) && ~isempty(YbinNw)
+            if (Nc(3) > 0) && ~isempty(pSR.Ybin)
                 YbinNwT = cell2cell(cellfun(@(y)(cellfun(@(x)(cell2mat(x)),...
                                 num2cell(cell2cell(y,0),2),'un',0)),...
-                                num2cell(YbinNw{j},1),'un',0),0);
+                                num2cell(pSR.Ybin{j},1),'un',0),0);
                 for k1 = 1:nGrp
                     for k2 = 1:(1+cP.sepDN)
                         P{j,2}{k1,k2} = [P{j,2}{k1,k2},YbinNwT{k1,k2}];
@@ -465,12 +466,14 @@ for i = 1:nExp
                                   
             if prod(Nc) > 0
                 % sets the total/reaction counts
-                [iR, iC] = deal(1:size(YcountNw{j},1), 1:size(YcountNw{j},2));
-                plotD(j).Hist(iR,iC,i) = YcountNw{j};
-                plotD(j).HistR(iR,iC,i) = YcountRNw{j}; 
+                iR = 1:size(pSR.Ycount{j},1);
+                iC = 1:size(pSR.Ycount{j},2);
+                plotD(j).Hist(iR,iC,i) = pSR.Ycount{j};
+                plotD(j).HistR(iR,iC,i) = pSR.YcountR{j}; 
 
                 % adds on the bin/reaction counts                
-                Ycount{j} = Ycount{j} + sum(cell2mat(reshape(YcountNw{j},Nc)),3);
+                Ycount{j} = Ycount{j} + ...
+                    sum(cell2mat(reshape(pSR.Ycount{j},Nc)),3);
 %                 YcountR{j} = YcountR{j} + sum(cell2mat(reshape(YcountRNw{j},Nc)),3);
             end
         end

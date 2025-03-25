@@ -114,16 +114,20 @@ function oP = initOutputPara(snTot)
 
 % initialisations
 oP = setupOutputParaStruct(snTot);
-[Stats,xDep] = deal({'ZTestGroup','Tgrp','dnStr'},{'Tgrp','dnStr'});
-[Type1,Type2] = deal(3,2);
+Stats = {'ZTestGroup','Tgrp','dnStr'};
+[xDep,xDep2] = deal({'Tgrp','dnStr'},{'Tzeit','dnStr'});
+[Type1,Type2,Type3] = deal(3,2,7);
 
 % sets the independent variable fields
 oP = addXVarField(oP,'Time Group','Tgrp','Group');
-oP = addXVarField(oP,'Stimuli Index','dnStr','Other');
+oP = addXVarField(oP,'Day/Night','dnStr','Other');
+oP = addXVarField(oP,'Zeitgeiber Time','Tzeit','Group');
 
 % sets the dependent variable fields
 oP = addYVarField(oP,'Histogram Count','Hist',[],Type1,xDep,1);
 oP = addYVarField(oP,'Reaction Count','HistR',[],Type1,xDep,1);
+oP = addYVarField(oP,'Immobility Times','tImmob',[],Type1,xDep2,1);
+oP = addYVarField(oP,'Immobility Times','tImmobF',[],Type3);
 oP = addYVarField(oP,'Histogram Count','Pr_N',[],Type2,xDep);
 oP = addYVarField(oP,'Reaction Proportion','Pr',Stats,[],xDep);
 oP = addYVarField(oP,'Reaction Proportion (Mean)','Pr_P',[],Type2,xDep);
@@ -202,6 +206,7 @@ tBin = str2double(cP.nBin);
 % other initialisations
 ok = false;
 Tbin = (tBin:tBin:60)-(tBin/2);
+Tzeit = num2cell(arr2vec(1:(24/(1 + cP.sepDN))));
 
 % sets the group strings  
 Tgrp = setTimeBinStrings(tBin,nGrp);
@@ -220,13 +225,16 @@ if isfield(cP,'devType'); devType = cP.devType; end
 if isfield(cP,'chType'); chType = cP.chType; end
 
 % initialises the plot value data struct
-plotD = initPlotValueStruct(snTot,pData,cP,...
-                                 'Tbin',Tbin','Tgrp',Tgrp,'dnStr',dnStr,...
-                                 'Pr_P',[],'Pr_N',[],'Pr_sem',[],...
-                                 'Hist',[],'HistR',[],'indCombMet','sum');
+plotD = initPlotValueStruct(snTot,pData,cP,'indCombMet','sum',...
+                     'Tbin',Tbin','Tgrp',Tgrp,'dnStr',dnStr,...
+                     'Pr_P',[],'Pr_N',[],'Pr_sem',[],'Tzeit',Tzeit,...
+                     'Hist',[],'HistR',[],'tImmobF',[],'tImmob',[]);
 
 % other initialisations                             
 nApp = length(snTot(1).iMov.ok);
+for i = 1:nApp
+    plotD(i).tImmobF = cell(nExp,1);
+end
 % [Ycount,YcountR] = deal(repmat({zeros(1+cP.sepDN,nGrp)},nApp,1));
                         
 % ---------------------------------------------------- %
@@ -251,8 +259,8 @@ for i = 1:nExp
     end
     
     % calculates the new sleep intensity data
-    [YcountNw,YcountRNw] = getStimuliResponseData(snTot(i),cP,h,wOfs);            
-    if isempty(YcountNw)
+    pSR = getStimuliResponseData(snTot(i),cP,h,wOfs);            
+    if isempty(pSR)
         % if the user cancelled, then exit the function
         [plotD,ok] = deal([],false);
         return
@@ -260,12 +268,17 @@ for i = 1:nExp
         % otherwise, append the data to the arrays        
         for j = 1:nApp
             % sets the total/reaction counts            
-            Nc = [1 1 numel(YcountNw{j})];
+            Nc = [1 1 numel(pSR.Ycount{j})];
             if prod(Nc) > 0               
-                % 
-                [iR, iC] = deal(1:size(YcountNw{j},1), 1:size(YcountNw{j},2));
-                plotD(j).Hist(iR,iC,i) = YcountNw{j};
-                plotD(j).HistR(iR,iC,i) = YcountRNw{j};
+                % sets the row/column indices
+                iR = 1:size(pSR.Ycount{j},1);
+                iC = 1:size(pSR.Ycount{j},2);
+                
+                % stores the calculated values
+                plotD(j).Hist(iR,iC,i) = pSR.Ycount{j};
+                plotD(j).HistR(iR,iC,i) = pSR.YcountR{j};
+                plotD(j).tImmob(iR,iC,i) = pSR.tImmob{j};                
+                plotD(j).tImmobF{i} = pSR.tImmobF{j};
                 
 %                 %
 %                 ii = any(~cellfun('isempty',plotD(j).Hist(:,:,i)),2);
