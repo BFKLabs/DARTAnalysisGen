@@ -425,10 +425,11 @@ for i = 1:nExp
     end
         
     % determines the turning events for each frame
-    for j = 1:length(iApp)
+    for jj = 1:length(iApp)
         % updates the waitbar figure 
-        wStrNw = sprintf('%s (Apparatus %i of %i)',wStr{2},j,length(iApp));
-        if h.Update(2,wStrNw,j/length(iApp))
+        j = iApp(jj);
+        wStrNw = sprintf('%s (Group %i of %i)',wStr{2},jj,length(iApp));
+        if h.Update(2,wStrNw,jj/length(iApp))
             [plotD,ok] = deal([],false);
             return
         end        
@@ -580,17 +581,17 @@ for i = 1:nExp
         
         % append that data to the overall arrays
         ii = ~cellfun('isempty',PhiAppNw);
-        PhiApp{iApp(j)} = [PhiApp{iApp(j)};cell2mat(PhiAppNw(ii))];
-        Dmove{iApp(j)} = [Dmove{iApp(j)};cell2mat(DmoveNw(ii))];        
-        Dturn{iApp(j)} = [Dturn{iApp(j)};cell2mat(DturnNw(ii))];        
-        Tdir{iApp(j)} = [Tdir{iApp(j)};cell2mat(TdirNw(ii))];        
-        Dedge{iApp(j)} = [Dedge{iApp(j)};cell2mat(DedgeNw(ii))];
-        Tedge{iApp(j)} = [Tedge{iApp(j)};cell2mat(TedgeNw(ii))*dTmn];                
-        Tmove{iApp(j)} = [Tmove{iApp(j)};cell2mat(TmoveNw(ii))];
+        PhiApp{j} = [PhiApp{j};cell2mat(PhiAppNw(ii))];
+        Dmove{j} = [Dmove{j};cell2mat(DmoveNw(ii))];        
+        Dturn{j} = [Dturn{j};cell2mat(DturnNw(ii))];        
+        Tdir{j} = [Tdir{j};cell2mat(TdirNw(ii))];        
+        Dedge{j} = [Dedge{j};cell2mat(DedgeNw(ii))];
+        Tedge{j} = [Tedge{j};cell2mat(TedgeNw(ii))*dTmn];                
+        Tmove{j} = [Tmove{j};cell2mat(TmoveNw(ii))];
         
         % sets the 
-        [kk,indF] = deal(iApp(j),1:length(onEdge));
-        plotD(kk).PrE(1,indF,i) = cellfun(@(x)(100*mean(x)),onEdge,'un',0);
+        indF = 1:length(onEdge);
+        plotD(j).PrE(1,indF,i) = cellfun(@(x)(100*mean(x)),onEdge,'un',0);
 %         [TM{i,kk},DE{i,kk}] = deal(TmoveNw,DedgeNw);
 %         TE{i,kk} = cellfun(@(x)(x*dTmn),TedgeNw,'un',0);  
     end   

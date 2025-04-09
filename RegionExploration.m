@@ -189,16 +189,16 @@ for i = 1:nExp
         end        
                        
         % sets the new integer x/y coordinates
-        RR = repmat(R{k}(:)',size(dPx{k},1),1);
-        Px = num2cell(roundP(dPx{k}+RR),1);
-        Py = num2cell(roundP(dPy{k}+RR),1);
+        RR = repmat(R{j}(:)',size(dPx{j},1),1);
+        Px = num2cell(roundP(dPx{j}+RR),1);
+        Py = num2cell(roundP(dPy{j}+RR),1);
         
         % sets/appends the position look up table 
         DL = setupLookupTable(Px,Py,DL);
         
         % calculates the new exploration values and appends to the array
         Enw = cellfun(@(x,y,z)...
-                  (detFlyExploration(x,y,DL,z)),Px,Py,num2cell(R{k}(:)'));
+                  (detFlyExploration(x,y,DL,z)),Px,Py,num2cell(R{j}(:)'));
 
 %         ifok = snTot(i).iMov.flyok{j};
         ifok = 1:length(Enw);

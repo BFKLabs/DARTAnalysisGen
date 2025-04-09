@@ -283,7 +283,7 @@ pF = retFormatStruct(pF,1);
 xLim = xi([1 end])+0.5*[-1 1];    
 
 % sets the title string
-pF.Title.String = pP.pMet;
+pF.Title(1).String = pP.pMet;
 
 % ----------------------- %
 % --- FIGURE CREATION --- %
@@ -294,7 +294,7 @@ hAx = createSubPlotAxes();
 axis(hAx,'on'); hold on; 
 
 % sets the plot variable string and y-axis string
-switch (pP.pMet)        
+switch pP.pMet   
     case ('Outer Edge Crossings')
         [pF.yLabel.String,pStr] = deal('Crossings','nX');        
     case ('Outer Edge Percentage')

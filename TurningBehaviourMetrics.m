@@ -222,9 +222,10 @@ for i = 1:nExp
     R = cellfun(@(x)(x/sFac),R0,'un',0);
     
     % determines the turning events for each frame
-    for j = 1:length(iApp)
+    for jApp = 1:length(iApp)
         % calculates the angle of the fly wrt the circle centre
-        tInd{i,iApp(j)} = cell(1,size(dPx{j},2));        
+        j = iApp(jApp);
+        tInd{i,j} = cell(1,size(dPx{j},2));        
         for k = 1:size(dPx{j},2)
             kGrp = getGroupIndex(~isnan(dPx{j}(:,k)));
             for kk = 1:length(kGrp)
@@ -298,7 +299,7 @@ for i = 1:nExp
                         jj = DGrp > cP.dTol/sFac;
                         
                         % reorders the 
-                        tInd{i,iApp(j)}{k} = cell2mat(ind0(jj));          
+                        tInd{i,j}{k} = cell2mat(ind0(jj));          
                         iGrp{k} = iGrp{k}(jj);
                     end
                 end            
@@ -306,10 +307,10 @@ for i = 1:nExp
                         
             % if any turns have been found, then calculate the associated
             % metrics with the turns 
-            if ~isempty(tInd{i,iApp(j)}{k})
+            if ~isempty(tInd{i,j}{k})
                 % sets the start indices of the turn events, and the
                 % indices of the subsequent turn paths (nFrm frames long)
-                iNw = num2cell(tInd{i,iApp(j)}{k});               
+                iNw = num2cell(tInd{i,j}{k});               
                 jNw = cellfun(@(x)(x+(0:cP.nFrm)),iNw,'un',0);
                 
                 % calculates the flies orientation (maps the angles to the
@@ -363,9 +364,9 @@ for i = 1:nExp
         
         % appends the overall turn count to the total array
         ifok = 1:length(iGrp);
-%         ifok = snTot(i).iMov.flyok{iApp(j)};        
-        plotD(iApp(j)).NT(1,ifok,i) = num2cell(cellfun('length',iGrp)); 
-        plotD(iApp(j)).dDC(1,ifok,i) = num2cell(dDCnw);        
+%         ifok = snTot(i).iMov.flyok{j};        
+        plotD(j).NT(1,ifok,i) = num2cell(cellfun('length',iGrp)); 
+        plotD(j).dDC(1,ifok,i) = num2cell(dDCnw);        
     end    
 end
     
