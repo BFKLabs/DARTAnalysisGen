@@ -190,7 +190,7 @@ end
 
 % determines the currently loaded experimental file is valid for
 % calculating arousal threshold
-bInfo = reduceStimBlockInfo(snTot(1).sTrainEx.sTrain.blkInfo);
+bInfo = reduceStimBlockInfo(snTot(1).sTrainEx.sTrain(1).blkInfo);
 NLvl0 = length(bInfo);
 if NLvl0 == 1
     eStr = {'Error! Single-phase only stimuli events detected within data set.';
