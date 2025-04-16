@@ -231,7 +231,7 @@ for j = 1:length(iApp)
             iPy = max(1,min(roundP(Py{k}{i}*(nG-1))+1,nG));   
 
             % sets the heatmap array for the given group
-            if (~isempty(iPx))
+            if ~isempty(iPx)
                 ind = sub2ind(nG*[1 1],iPy,iPx);
                 Ihm{i}(:,iCol) = Ihm{i}(:,iCol) + ...
                                     reshape(hist(ind,1:(nG^2)),nG*[1 1]);            
@@ -278,7 +278,7 @@ if (isempty(p.Ihm)); return; end
 
 % retrieves the heatmap array
 Ihm = p.Ihm;
-if (pP.pltLog)
+if pP.pltLog
     Ihm = cellfun(@(y)(log10(y+1)),Ihm,'un',0);
 end
 
@@ -344,7 +344,7 @@ switch mShape
     case 'Circle'
         % case is circular regions
         Bnan = isnan(IhmT);
-        IhmT(bwmorph(~Bnan,'dilate',1) & Bnan) = -dcMap;
+        IhmT(~Bnan & Bnan) = -dcMap;
         IhmT(isnan(IhmT)) = Ymx + dcMap;
         
     case 'Rectangle'
