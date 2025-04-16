@@ -58,7 +58,7 @@ cP = setParaFields(nPara);
 
 % sets the calculation parameter fields into the data struct
 cP(1) = setParaFields([],'Number',25,'nGrid','Grid Resolution',[2 inf true]);
-if (isLong)
+if isLong
     cP(2) = setParaFields([],'Boolean',false,'isDN','Separate Day/Night Activity');
 end
 
@@ -115,10 +115,10 @@ end
 % checks to see if the solution struct has the sub-region data struct
 snTotL = snTot(1);
 ok = checkFuncPara({'HasSubRegionStruct'},cP,snTotL);
-if (~ok); plotD = []; return; end
+if ~ok; plotD = []; return; end
 
 % sets the day/night separation flag
-if (isfield(cP,'isDN'))
+if isfield(cP,'isDN')
     % flag is included in calculation parameters
     isDN = cP.isDN;
 else
@@ -228,7 +228,7 @@ for i = 1:nApp
             iPy = max(1,min(roundP(Py{1,i,k}{j}*(nG-1))+1,nG));     
 
             % sets the heatmap array for the given group
-            if (~isempty(iPx))
+            if ~isempty(iPx)
                 ind = sub2ind(nG*[1 1],iPy,iPx);      
                 dIhm = reshape(hist(ind,1:(nG^2)),nG*[1 1]);
                 Ihm{i}(:,iCol) = Ihm{i}(:,iCol) + dIhm;
@@ -272,7 +272,7 @@ p = plotD{1}(ind);
 
 % retrieves the heatmap array
 Ihm = field2cell(plotD{1}(ind),'Ihm')';
-if (pP.pltLog)
+if pP.pltLog
     Ihm = cellfun(@(x)(log10(x+1)),Ihm,'un',0);
 end
 
@@ -320,7 +320,7 @@ for i = 1:nApp
         case 'Circle'
             % case is circular regions
             Bnan = isnan(IhmF);        
-            IhmF(bwmorph(~Bnan,'dilate') & Bnan) = -dcMap;
+            IhmF(~Bnan & Bnan) = -dcMap;
             IhmF(isnan(IhmF)) = Ymx + dcMap;
             
         case 'Rectangle'
