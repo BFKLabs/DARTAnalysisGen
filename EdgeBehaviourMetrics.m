@@ -733,7 +733,11 @@ switch pP.pMet
         end
             
         % sets the x/y-axis label strings        
-        if pP.usePDF; yStr = 'Proportion'; else yStr = 'Frequency'; end
+        if pP.usePDF
+            yStr = 'Proportion';
+        else
+            yStr = 'Frequency'; 
+        end
         
     case ('Approach Angle (Polar Plot)')
         % sets the plot data

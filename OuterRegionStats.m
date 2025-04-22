@@ -44,7 +44,7 @@ rI = struct('Scope',[],'Dur',[],'Shape',[],...
 % sets the struct fields
 rI.Scope = setFuncScopeString(pData.Type);
 rI.Dur = 'None';
-rI.Shape = '2D (Circle)';
+rI.Shape = '2D';
 rI.Stim = 'None';
 rI.Spec = 'None';
 
@@ -172,6 +172,7 @@ cP.movType = 'Absolute Speed';
 % ------------------------------------------- %
 
 % array dimensioning and memory allocation
+mShape = snTot(1).iMov.pInfo.mShape;
 [nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 
 % initialises the plot value data struct
@@ -216,11 +217,12 @@ for i = 1:nExp
         [dPx,dPy,R] = get2DCoordsBG(snTot(i),k); 
 
         % determines the edge position flags for each fly (over all frames)        
-        onEdge = detFlyEdgePos(dPx,dPy,R,cP,sFac);
+        onEdge = detFlyEdgePos(dPx,dPy,R,cP,sFac,mShape);
         
         % calculates the outer region statistics for all flies
-        rPosM = cellfun(@(x,y,z)(calcOuterRegionStats(Texp,x,y,z,sFac)),...
-                num2cell(onEdge,1),num2cell(dPx,1),num2cell(dPy,1),'un',0);
+        rPosM = cellfun(@(x,y,z)...
+            (calcOuterRegionStats(Texp,x,y,z,sFac,mShape)),...
+             num2cell(onEdge,1),num2cell(dPx,1),num2cell(dPy,1),'un',0);
         [nX,pOut,R] = field2cell(cell2mat(rPosM),{'nX','prOut','R'},1);
         
         % sets the values into the plotting data struct
@@ -337,7 +339,7 @@ function [pData,plotD] = outFunc(pData,plotD,snTot)
 % ----------------------------------------------------------------------- %
 
 % --- determines the relative positional metrics
-function rPosM = calcOuterRegionStats(T,onEdge,X,Y,sFac)
+function rPosM = calcOuterRegionStats(T,onEdge,X,Y,sFac,mShape)
 
 % determines the index groups of the points within the inner/outer regions
 rPosM = struct('nX',NaN,'prOut',NaN,'R',NaN);
@@ -359,4 +361,12 @@ tOut = sum(cellfun(@(x)(diff(T(x([1 end])))),outGrp));
 rPosM.prOut = 100*tOut/(tIn+tOut);
 
 % calculates the mean radial distance of the fly over the experiment
-rPosM.R = mean(sqrt(X.^2 + Y.^2)*sFac,'omitnan');
+switch mShape
+    case 'Circle'
+        % case is circular regions
+        rPosM.R = mean(sqrt(X.^2 + Y.^2)*sFac,'omitnan');
+
+    case 'Rectangle'
+        % case is rectangular regions
+        rPosM.R = mean(max([abs(X),abs(Y)],[],2)*sFac,'omitnan');
+end

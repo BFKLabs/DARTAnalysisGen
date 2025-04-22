@@ -145,10 +145,13 @@ nG = cP.nGrid;
 mShape = snTot.iMov.pInfo.mShape;
 
 % determines the points outside of the circle
-[y,x] = meshgrid(((1:nG)-0.5)/nG - 0.5); 
-isN = sqrt(x.^2 + y.^2) > 0.5;
-if (isDN); isN = [isN,true(nG,dnDel),isN]; end
-
+switch mShape
+    case 'Circle'
+        [y,x] = meshgrid(((1:nG)-0.5)/nG - 0.5); 
+        isN = sqrt(x.^2 + y.^2) > 0.5;
+        if (isDN); isN = [isN,true(nG,dnDel),isN]; end
+end
+        
 % calculates the video frame rate and experiment apparatus indices
 iApp = find(~cellfun('isempty',snTot.iMov.flyok));
 szHM = nG*[1 (1+isDN)] + [0 dnDel*isDN];
@@ -239,7 +242,9 @@ for j = 1:length(iApp)
         end
         
         % removes the outside region values
-        Ihm{i}(isN) = NaN;        
+        if exist('isN','var')
+            Ihm{i}(isN) = NaN;        
+        end
     end
     
     % sets the heatmap array into the plot data struct
@@ -274,7 +279,7 @@ p = plotD{1}(ind);
 mShape = snTot.iMov.pInfo.mShape;
 
 % if there are no heatmaps for this group, then exit
-if (isempty(p.Ihm)); return; end
+if isempty(p.Ihm); return; end
 
 % retrieves the heatmap array
 Ihm = p.Ihm;
@@ -349,7 +354,7 @@ switch mShape
         
     case 'Rectangle'
         % case is rectangular regions
-        IhmT(isnan(IhmT)) = 0;
+        IhmT(isnan(IhmT)) = Ymx + dcMap;
 end
 
 % creates the heatmap image    

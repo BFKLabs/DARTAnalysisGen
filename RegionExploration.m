@@ -44,7 +44,7 @@ rI = struct('Scope',[],'Dur',[],'Shape',[],...
 % sets the struct fields
 rI.Scope = setFuncScopeString(pData.Type);
 rI.Dur = 'None';
-rI.Shape = '2D (Circle)';
+rI.Shape = '2D';
 rI.Stim = 'None';
 rI.Spec = 'None';
 
@@ -138,6 +138,7 @@ if (~ok); plotD = []; return; end
 % ------------------------------------------- %
 
 % array dimensions
+mShape = snTot(1).iMov.pInfo.mShape;
 [nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % initialises the plot value data struct
@@ -165,6 +166,8 @@ for i = 1:nExp
         if h.Update(1,wStrNw,i/(1+nExp))
             [plotD,ok] = deal([],false);
             return
+        else
+            h.Update(2,'Calculating Scaled Coordinates',0);
         end
     end
     
@@ -187,18 +190,36 @@ for i = 1:nExp
             [plotD,ok] = deal([],false);
             return
         end        
-                       
-        % sets the new integer x/y coordinates
-        RR = repmat(R{j}(:)',size(dPx{j},1),1);
-        Px = num2cell(roundP(dPx{j}+RR),1);
-        Py = num2cell(roundP(dPy{j}+RR),1);
+                
+        % sets the new integer x/y coordinates (based on setup shape)
+        switch mShape
+            case 'Circle'
+                % case is circular arenas
+                RR = R{j}(:)';
+                Px = num2cell(roundP(dPx{j}+RR),1);
+                Py = num2cell(roundP(dPy{j}+RR),1);
+                
+            case 'Rectangle'
+                % case is rectangular arenas                
+                Px = num2cell(roundP(dPx{j}+R{j}(1,:)/2),1);
+                Py = num2cell(roundP(dPy{j}+R{j}(2,:)/2),1);
+        end
         
         % sets/appends the position look up table 
         DL = setupLookupTable(Px,Py,DL);
         
-        % calculates the new exploration values and appends to the array
-        Enw = cellfun(@(x,y,z)...
-                  (detFlyExploration(x,y,DL,z)),Px,Py,num2cell(R{j}(:)'));
+        % calculates the new exploration values
+        switch mShape
+            case 'Circle'        
+                % case is circular arenas                
+                Enw = cellfun(@(x,y,z)(detFlyExploration...
+                    (x,y,DL,z,mShape)),Px,Py,num2cell(R{j}(:)'));
+                
+            case 'Rectangle'
+                % case is rectangular arenas
+                Enw = cellfun(@(x,y,z)(detFlyExploration...
+                    (x,y,DL,z,mShape)),Px,Py,num2cell(R{j},1));
+        end
 
 %         ifok = snTot(i).iMov.flyok{j};
         ifok = 1:length(Enw);
@@ -293,11 +314,20 @@ function [pData,plotD] = outFunc(pData,plotD,snTot)
 % ----------------------------------------------------------------------- %
 
 %--- calculates the exploration ratio of the fly over the 2D arena
-function E = detFlyExploration(x,y,DL,R)
+function E = detFlyExploration(x,y,DL,R,mShape)
 
 % converts the x/y coordinates to cell arrays
-[dR,R] = deal(2,ceil(R));
-[X,Y] = deal(num2cell(x),num2cell(y));
+[dR,X,Y] = deal(2,num2cell(x),num2cell(y));
+
+switch mShape
+    case 'Circle'
+        % case is circular regions
+        R = ceil(R);
+        
+    case 'Rectangle'
+        % case is rectangular regions
+        R = ceil(R) - 1;             
+end
 
 % calculates the inter-frame distance, and from this determine the frames
 % where the distance is >= 2 pixels
@@ -336,11 +366,23 @@ end
 [X,Y] = deal(num2cell(max(cell2mat(X),1)),num2cell(max(cell2mat(Y),1)));
 
 % calculates the number of pixels visited divided by the area of the
-% circle (this gives the exploration ratio
-[XX,YY] = deal(min(max(1,cell2mat(X)),2*R),min(max(1,cell2mat(Y)),2*R));
-Apix = length(unique(sub2ind(2*R*[1 1],YY,XX)));
-E = min(1,Apix/(pi*(R-dR)^2));
+% circle (this gives the exploration ratio)
+switch mShape
+    case 'Circle'
+        % case is circular regions
+        XX = min(max(1,cell2mat(X)),2*R);
+        YY = min(max(1,cell2mat(Y)),2*R);
+        Apix = length(unique(sub2ind(2*R*[1 1],YY,XX)));
+        E = min(1,Apix/(pi*(R-dR)^2));
 
+    case 'Rectangle'
+        % case is rectangular regions
+        XX = min(max(1,cell2mat(X)),R(1));
+        YY = min(max(1,cell2mat(Y)),R(2));
+        Apix = length(unique(sub2ind(flip(R),YY,XX)));
+        E = min(1,Apix/prod(R));
+end
+    
 %
 function DL = setupLookupTable(Px,Py,DLold)
 

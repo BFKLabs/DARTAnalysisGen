@@ -143,9 +143,12 @@ nG = cP.nGrid;
 [Px,Py] = deal(cell(1,nApp,1+isDN));
 
 % determines the points outside of the circle
-[y,x] = meshgrid(((1:nG)-0.5)/nG - 0.5); 
-isN = sqrt(x.^2 + y.^2) > 0.5;
-if isDN; isN = [isN,true(nG,dnDel),isN]; end
+switch mShape
+    case 'Circle'
+        [y,x] = meshgrid(((1:nG)-0.5)/nG - 0.5); 
+        isN = sqrt(x.^2 + y.^2) > 0.5;
+        if isDN; isN = [isN,true(nG,dnDel),isN]; end
+end
 
 % memory allocation
 szHM = nG*[1 (1+isDN)] + [0 dnDel*isDN];
@@ -190,10 +193,11 @@ for i = 1:nExp
     % the data values
     for j = 1:length(iApp)
         % sets the x/y direction scale factors (based on shape)
+        jj = iApp(j);
         switch mShape
             case 'Circle'
                 % case is circular regions
-                [xScl,yScl] = deal(2*R{j}(:)');
+                [xScl,yScl] = deal(2*R{jj}(:)');
 
             case 'Rectangle'
                 % case is rectangular regions
@@ -210,10 +214,10 @@ for i = 1:nExp
             end
             
             % sets the normalised x/y coordinates
-            Px{1,iApp(j),k} = [Px{1,iApp(j),k},...
-                    num2cell(dPx{j}(iDN,:)./xScl + 1/2,1)];
-            Py{1,iApp(j),k} = [Py{1,iApp(j),k},...
-                    num2cell(dPy{j}(iDN,:)./yScl + 1/2,1)];
+            Px{1,jj,k} = [Px{1,jj,k},...
+                    num2cell(dPx{jj}(iDN,:)./xScl + 1/2,1)];
+            Py{1,jj,k} = [Py{1,iApp(j),k},...
+                    num2cell(dPy{jj}(iDN,:)./yScl + 1/2,1)];
         end
     end
 end    
@@ -237,7 +241,9 @@ for i = 1:nApp
     end
     
     % removes the outside regions
-    Ihm{i}(isN) = NaN;
+    if exist('isN','var')    
+        Ihm{i}(isN) = NaN;
+    end
     
     % sets the heatmap array into the plot data struct
     plotD(i).Ihm = Ihm{i};   
@@ -325,7 +331,7 @@ for i = 1:nApp
             
         case 'Rectangle'
             % case is rectangular regions
-            IhmF(isnan(IhmF)) = 0;                        
+            IhmF(isnan(IhmF)) = Ymx + dcMap;                        
     end
     
     % creates the heatmap image
