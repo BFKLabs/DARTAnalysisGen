@@ -431,8 +431,6 @@ end
 % --- function for calculating the data for the analysis figure --- %
 function [pData,plotD] = outFunc(pData,plotD,snTot)
 
-
-
 % ----------------------------------------------------------------------- %
 % ---                     MISCELLANEOUS FUNCTION                      --- %
 % ----------------------------------------------------------------------- %

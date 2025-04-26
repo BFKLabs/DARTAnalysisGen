@@ -196,13 +196,13 @@ for i = 1:nExp
             case 'Circle'
                 % case is circular arenas
                 RR = R{j}(:)';
-                Px = num2cell(roundP(dPx{j}+RR),1);
-                Py = num2cell(roundP(dPy{j}+RR),1);
+                Px = num2cell(roundP(dPx{k}+RR),1);
+                Py = num2cell(roundP(dPy{k}+RR),1);
                 
             case 'Rectangle'
                 % case is rectangular arenas                
-                Px = num2cell(roundP(dPx{j}+R{j}(1,:)/2),1);
-                Py = num2cell(roundP(dPy{j}+R{j}(2,:)/2),1);
+                Px = num2cell(roundP(dPx{k}+R{k}(1,:)/2),1);
+                Py = num2cell(roundP(dPy{k}+R{k}(2,:)/2),1);
         end
         
         % sets/appends the position look up table 
@@ -213,12 +213,12 @@ for i = 1:nExp
             case 'Circle'        
                 % case is circular arenas                
                 Enw = cellfun(@(x,y,z)(detFlyExploration...
-                    (x,y,DL,z,mShape)),Px,Py,num2cell(R{j}(:)'));
+                    (x,y,DL,z,mShape)),Px,Py,num2cell(R{k}(:)'));
                 
             case 'Rectangle'
                 % case is rectangular arenas
                 Enw = cellfun(@(x,y,z)(detFlyExploration...
-                    (x,y,DL,z,mShape)),Px,Py,num2cell(R{j},1));
+                    (x,y,DL,z,mShape)),Px,Py,num2cell(R{k},1));
         end
 
 %         ifok = snTot(i).iMov.flyok{j};
