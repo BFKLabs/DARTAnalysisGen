@@ -132,6 +132,8 @@ oP = addYVarField(oP,'Histogram Count','Pr_N',[],Type2,xDep);
 oP = addYVarField(oP,'Reaction Proportion','Pr',Stats,[],xDep);
 oP = addYVarField(oP,'Reaction Proportion (Mean)','Pr_P',[],Type2,xDep);
 oP = addYVarField(oP,'Reaction Proportion (SEM)','Pr_sem',[],Type2,xDep);
+oP = addYVarField(oP,'Reaction','isReact',[],Type1,xDep2,1);
+oP = addYVarField(oP,'Reaction','isReactF',[],Type3);
 
 % --- sets the data cursor update function
 function dTxt = dataCursorFunc(hObj,evnt,dcObj)
@@ -228,7 +230,8 @@ if isfield(cP,'chType'); chType = cP.chType; end
 plotD = initPlotValueStruct(snTot,pData,cP,'indCombMet','sum',...
                      'Tbin',Tbin','Tgrp',Tgrp,'dnStr',dnStr,...
                      'Pr_P',[],'Pr_N',[],'Pr_sem',[],'Tzeit',Tzeit,...
-                     'Hist',[],'HistR',[],'tImmobF',[],'tImmob',[]);
+                     'Hist',[],'HistR',[],'tImmobF',[],'tImmob',[],...
+                     'isReactF',[],'isReact',[]);
 
 % other initialisations                             
 nApp = length(snTot(1).iMov.ok);
@@ -277,8 +280,11 @@ for i = 1:nExp
                 % stores the calculated values
                 plotD(j).Hist(iR,iC,i) = pSR.Ycount{j};
                 plotD(j).HistR(iR,iC,i) = pSR.YcountR{j};
-                plotD(j).tImmob(iR,iC,i) = pSR.tImmob{j};                
+                plotD(j).tImmob(iR,iC,i) = pSR.tImmob{j};
+                plotD(j).isReact(iR,iC,i) = pSR.isReact{j};
+                
                 plotD(j).tImmobF{i} = pSR.tImmobF{j};
+                plotD(j).isReactF{i} = pSR.isReactF{j};                
                 
 %                 %
 %                 ii = any(~cellfun('isempty',plotD(j).Hist(:,:,i)),2);
