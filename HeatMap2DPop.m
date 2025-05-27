@@ -215,9 +215,9 @@ for i = 1:nExp
             
             % sets the normalised x/y coordinates
             Px{1,jj,k} = [Px{1,jj,k},...
-                    num2cell(dPx{k}(iDN,:)./xScl + 1/2,1)];
+                    num2cell(dPx{j}(iDN,:)./xScl + 1/2,1)];
             Py{1,jj,k} = [Py{1,iApp(j),k},...
-                    num2cell(dPy{k}(iDN,:)./yScl + 1/2,1)];
+                    num2cell(dPy{j}(iDN,:)./yScl + 1/2,1)];
         end
     end
 end    
