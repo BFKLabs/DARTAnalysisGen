@@ -52,18 +52,35 @@ rI.Spec = 'None';
 % --- initialises the calculation parameter function --- %
 function cP = initCalcPara(snTot)
 
-% initialises the parameter struct
+% parameters
 nPara = 2;
+useBin = 1;
+calcInst = false;
+
+% field retrieval
 cP = setParaFields(nPara);
+
+% resets the calculation parameters based on expt duration
+tDur = snTot.T{end}(end);
+if tDur < 120
+    % experiment is very short (don't use binning)
+    [calcInst,useBin] = deal(true,0);
+    [tBin,tBinMax] = deal(NaN);
+
+else
+    % otherwise, calculate the default/max bin sizes
+    tBin = min(60,floor(tDur/10));
+    tBinMax = min(3600,floor(tDur/10));
+end
 
 % sets the tab list names
 a = {'1 - General'};
 
 % sets the parameter fields
-cP(1) = setParaFields(a{1},'Boolean',0,...
-            'calcInst','Calculate Instantaneous Speed');
-cP(2) = setParaFields(a{1},'Number',60,'tBin',...
-            'Activity Calculation Duration (sec)',[1 3600 false],{1,1});
+cP(1) = setParaFields(a{1},'Boolean',calcInst,...
+        'calcInst','Calculate Instantaneous Speed');
+cP(2) = setParaFields(a{1},'Number',tBin,'tBin',...
+        'Activity Calculation Duration (sec)',[1 tBinMax false],{1,useBin});
 
 % sets the tool-tip strings
 cP(1).TTstr = 'Calculates instantaneous speed intead of binned speed';
@@ -396,7 +413,11 @@ if isempty(pF.xLabel.String)
         end
     else
         % otherwise, reset the xlabel string
-        pF.xLabel.String = 'Time (mins)';
+        if tMlt == 1
+            pF.xLabel.String = 'Time (secs)';            
+        else
+            pF.xLabel.String = 'Time (mins)';
+        end
     end            
 end
 
@@ -642,7 +663,7 @@ nExp = length(Ttot);
 % sets up the time bin data for each experiment
 for i = 1:nExp    
     % sets up the time vector and time binning arrays (if required)
-    if cP.calcInst
+    if cP.calcInst || isnan(cP.tBin)
         % case is calculating instantaeous speed
         T0{i} = Ttot{i}(2:end);
         [dT{i},isOK{i}] = deal(diff(Ttot{i}),true(size(T0{i})));
