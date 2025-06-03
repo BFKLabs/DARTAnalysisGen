@@ -16,7 +16,7 @@ pData.dcFunc = @dataCursorFunc;
 if nargin == 1   
     % parameter data struct initialisation
     snTotL = snTot(1);
-    pData.cP = initCalcPara(snTot);
+    pData.cP = initCalcPara(snTot);    
     pData.pP = initPlotPara(snTotL);
     pData.oP = initOutputPara(snTot);
     pData.pF = initPlotFormat(snTotL);
@@ -61,7 +61,7 @@ calcInst = false;
 cP = setParaFields(nPara);
 
 % resets the calculation parameters based on expt duration
-tDur = snTot.T{end}(end);
+tDur = min(arrayfun(@(x)(x.T{end}(end)),snTot));
 if tDur < 120
     % experiment is very short (don't use binning)
     [calcInst,useBin] = deal(true,0);
