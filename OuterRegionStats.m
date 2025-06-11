@@ -13,7 +13,7 @@ pData.rI = initFuncReqInfo(pData);
 pData.dcFunc = @dataCursorFunc;
 
 % initialises the other fields  (if input argument provided)
-if (nargin == 1)    
+if nargin == 1
     % parameter data struct initialisation
     snTotL = snTot(1);
     pData.cP = initCalcPara(snTot);
@@ -159,7 +159,7 @@ dTxt = dcObj.setupCursorString();
 function [plotD,ok] = calcFunc(snTot,pData,gPara,cP,varargin)
 
 % initialises the calculation parameters (if not already initialised)
-if (nargin == 3)
+if nargin == 3
     % retrieves the parameter struct
     cP = retParaStruct(pData.cP,gPara);
 end
@@ -200,36 +200,43 @@ for i = 1:nExp
         h.Update(2,wStr{2},0);
     end
     
+    % experiment information retrieval
     [Texp,sFac] = deal(cell2mat(snTot(i).T),snTot(i).sgP.sFac);
     iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
     
-    for j = 1:length(iApp)
+    % sets the relevant x/y-locations for the current experiment    
+    [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp);
+    if length(iApp) == 1
+        [dPx,dPy,R] = deal({dPx},{dPy},{R}); 
+    end    
+    
+    % calculates the outer region statistics for each grouping
+    nApp2 = length(iApp);
+    for j = 1:nApp2
         % updates the waitbar figure
-        wStrNw = sprintf('%s (Apparatus %i of %i)',wStr{2},j,length(iApp));
-        if h.Update(2,wStrNw,j/length(iApp))
+        wStrNw = sprintf('%s (Group %i of %i)',wStr{2},j,nApp2);
+        if h.Update(2,wStrNw,j/nApp2)
             % if the user cancelled, then exit the function
             [plotD,ok] = deal([],false);
             return            
         end
-        
-        % retrieves the relative 2D coordinates
-        k = iApp(j);
-        [dPx,dPy,R] = get2DCoordsBG(snTot(i),k); 
 
         % determines the edge position flags for each fly (over all frames)        
-        onEdge = detFlyEdgePos(dPx,dPy,R,cP,sFac,mShape);
+        onEdge = detFlyEdgePos(dPx{j},dPy{j},R{j},cP,sFac,mShape);
         
         % calculates the outer region statistics for all flies
+        onEdgeC = num2cell(onEdge,1);
         rPosM = cellfun(@(x,y,z)...
             (calcOuterRegionStats(Texp,x,y,z,sFac,mShape)),...
-             num2cell(onEdge,1),num2cell(dPx,1),num2cell(dPy,1),'un',0);
-        [nX,pOut,R] = field2cell(cell2mat(rPosM),{'nX','prOut','R'},1);
+             onEdgeC,num2cell(dPx{j},1),num2cell(dPy{j},1),'un',0);
+        [nX,pOut,RM] = field2cell(cell2mat(rPosM),{'nX','prOut','R'},1);
         
         % sets the values into the plotting data struct
+        k = iApp(j);
         kk = 1:length(nX);
         plotD(k).nX(1,kk,i) = num2cell(nX,1);
         plotD(k).pOut(1,kk,i) = num2cell(pOut,1);
-        plotD(k).R(1,kk,i) = num2cell(R,1);
+        plotD(k).R(1,kk,i) = num2cell(RM,1);
     end
 end
 
@@ -272,8 +279,12 @@ pF = pData.pF;
 
 % sets the plotting indices and subplot indices
 ind = find(sP.Sub.isPlot);
-nApp = length(ind); if (nApp == 0); return; end
-p = plotD{1}(ind);
+nApp = length(ind); 
+if nApp == 0
+    return
+else
+    p = plotD{1}(ind);
+end
 
 % ---------------------------------------- %
 % --- FORMATTING STRUCT INTIALISATIONS --- %
@@ -312,7 +323,7 @@ plotBarBoxMetrics(hAx,xi,p,pStr,pP,yL,'b');
 set(hAx,'xticklabel',[],'xlim',xLim,'linewidth',1.5,'UserData',1);
 
 % adds in the gridlines (if checked)
-if (pP.plotGrid); grid(hAx,'on'); end
+if pP.plotGrid; grid(hAx,'on'); end
 
 % ------------------------------ %
 % --- PLOT AXES REFORMATTING --- %

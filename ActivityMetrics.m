@@ -60,7 +60,7 @@ is2D = all(cellfun(@(x)(is2DCheck(x.iMov)),num2cell(snTot)));
 a = {'1 - General','2 - Thresholds'};
 
 % sets the parameter fields
-cP(1) = setParaFields(a{1},'Boolean',0,'useRegion','Split Activity By Region',[],{0,~is2D});
+cP(1) = setParaFields(a{1},'Boolean',0,'useRegion','Split Activity By Inner/Outer Regions',[],{0,~is2D});
 cP(2) = setParaFields(a{1},'Boolean',1,'useAll','Analyse Entire Experiment');
 cP(3) = setParaFields(a{1},'Number',0,'T0','Start Time (min)',[0 inf true],{2,1});
 cP(4) = setParaFields(a{1},'Number',60,'Tdur','Analysis Duration (min)',[1 inf true],{2,1});
@@ -205,6 +205,7 @@ cP.movType = 'Absolute Speed';
 
 % array dimensioning and memory allocation
 nR = cP.useRegion + 1;
+mShape = snTot(1).iMov.pInfo.mShape;
 [nApp,nExp,ok] = deal(length(snTot(1).iMov.flyok),length(snTot),true);
 
 % sets the region strings
@@ -269,7 +270,7 @@ for i = 1:nExp
         % determines the edge position flags for each fly (over all frames)
         [sFac,jj] = deal(snTot(i).sgP.sFac,ii(1:end-1));
         onEdge = cellfun(@(x,y,r)(detFlyEdgePos(...
-                            x(jj,:),y(jj,:),r,cP,sFac)),dPx,dPy,R,'un',0);
+                    x(jj,:),y(jj,:),r,cP,sFac,mShape)),dPx,dPy,R,'un',0);
     end
     
     % calculates the time mid point of each frame, and removes all the
@@ -281,18 +282,21 @@ for i = 1:nExp
     TT{i} = Tmid(isOK);
     for j = 1:length(isMove)
         % sets the movement flags
-        I{iApp(j),i} = isMove{j}(isOK,:);
-        I{iApp(j),i}(1,:) = false;
+        k = iApp(j);
+        I{k,i} = isMove{j}(isOK,:);
+        I{k,i}(1,:) = false;
         
         % removes any short duration movement events
-        for k = 1:size(I{iApp(j),i},2)
-            iGrp = getGroupIndex(I{iApp(j),i}(:,k));
+        for kk = 1:size(I{k,i},2)
+            iGrp = getGroupIndex(I{k,i}(:,kk));
             ii = cellfun(@(x)((Tnw(x(end))-Tnw(x(1)-1)) <= cP.tMove),iGrp);
-            I{iApp(j),i}(cell2mat(iGrp(ii)),k) = false;
+            I{k,i}(cell2mat(iGrp(ii)),kk) = false;
         end
         
         % sets the outer-edge flags (if required)
-        if (cP.useRegion); OE{iApp(j),i} = onEdge{j}(isOK,:); end
+        if cP.useRegion
+            OE{k,i} = onEdge{j}(isOK,:); 
+        end
     end
 end
 

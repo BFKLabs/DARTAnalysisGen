@@ -176,14 +176,14 @@ for i = 1:nExp
     
     % sets the relevant x/y-locations for the current experiment    
     [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp);
-    if (length(iApp) == 1); [dPx,dPy,R] = deal({dPx},{dPy},{R}); end
+    if (length(iApp) == 1)
+        [dPx,dPy,R] = deal({dPx},{dPy},{R}); 
+    end
                     
-    % determines which trace belongs to which sub-region. from this, scale
-    % the data values
+    % calculates the region exploration ratios for each grouping
     nApp2 = length(iApp);
     for k = 1:nApp2
         % updates the waitbar figure
-        j = iApp(k);
         wStrNw = sprintf(...
                       '%s (Group %i of %i)',wStr{1+(nExp>1)},k,nApp2);
         if h.Update(1+(nExp>1),wStrNw,k/nApp2)
@@ -195,7 +195,7 @@ for i = 1:nExp
         switch mShape
             case 'Circle'
                 % case is circular arenas
-                RR = R{j}(:)';
+                RR = R{k}(:)';
                 Px = num2cell(roundP(dPx{k}+RR),1);
                 Py = num2cell(roundP(dPy{k}+RR),1);
                 
@@ -223,7 +223,7 @@ for i = 1:nExp
 
 %         ifok = snTot(i).iMov.flyok{j};
         ifok = 1:length(Enw);
-        plotD(j).E(1,ifok,i) = num2cell(Enw);       
+        plotD(iApp(k)).E(1,ifok,i) = num2cell(Enw);       
     end
 end
 

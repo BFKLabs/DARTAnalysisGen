@@ -12,7 +12,7 @@ pData.fType = [2 1 1 3];
 pData.rI = initFuncReqInfo(pData);
 
 % initialises the other fields  (if input argument provided)
-if (nargin == 1)
+if nargin == 1
     % parameter data struct initialisation
     snTotL = snTot(1);
     pData.cP = initCalcPara(snTot);
@@ -138,7 +138,7 @@ oP = setupOutputParaStruct(snTot);
 function [plotD,ok] = calcFunc(snTot,pData,gPara,cP,varargin)
 
 % initialises the calculation parameters (if not already initialised)
-if (nargin == 3)
+if nargin == 3
     % retrieves the parameter struct
     cP = retParaStruct(pData.cP,gPara);
 end
@@ -187,35 +187,39 @@ for i = 1:nExp
     % sets the relevant time points and apparatus indices for this expt
     if cP.useAll
         % uses all the time points
-        ii = 1:length(T{i});
+        iFrm = 1:length(T{i});
     else
         % use only the points from the start to the duration end
-        ii = (T{i} >= 60*cP.T0) & (T{i} <= 60*(cP.T0 + cP.Tdur));
+        iFrm = (T{i} >= 60*cP.T0) & (T{i} <= 60*(cP.T0 + cP.Tdur));
     end
     
     % calculates the video frame rate and experiment apparatus indices
     iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));
     
     % sets the relevant x/y-locations for the current experiment  
-    [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp,ii);
-    if (length(iApp) == 1); [dPx,dPy,R] = deal({dPx},{dPy},{R}); end
+    [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp,iFrm);
+    if length(iApp) == 1
+        [dPx,dPy,R] = deal({dPx},{dPy},{R}); 
+    end
     
     % determines which trace belongs to which sub-region. from this, scale
     % the data values
-    for j = 1:length(iApp)
+    nApp2 = length(iApp);
+    for j = 1:nApp2
         % calculates the normalised x/y-locations        
+        k = iApp(j);
         switch snTot(i).iMov.pInfo.mShape
             case 'Circle'
                 % case is circular regions
                 RR = repmat(R{j}(:)',size(dPx{j},1),1);
-                Px{iApp(j)} = [Px{iApp(j)},num2cell(0.5+dPx{j}./(2*RR),1)];
-                Py{iApp(j)} = [Py{iApp(j)},num2cell(0.5+dPy{j}./(2*RR),1)];
+                Px{k} = [Px{k},num2cell(0.5+dPx{j}./(2*RR),1)];
+                Py{k} = [Py{k},num2cell(0.5+dPy{j}./(2*RR),1)];
                 
             case 'Rectangle'
                 % case is rectangular regions
                 [W,H] = deal(R{j}(1,:),R{j}(2,:));
-                Px{iApp(j)} = [Px{iApp(j)},num2cell(0.5+dPx{j}./W,1)];
-                Py{iApp(j)} = [Py{iApp(j)},num2cell(0.5+dPy{j}./H,1)];
+                Px{k} = [Px{k},num2cell(0.5+dPx{j}./W,1)];
+                Py{k} = [Py{k},num2cell(0.5+dPy{j}./H,1)];
         end
     end
 end
@@ -299,8 +303,12 @@ if isMT
 else
     % case is single tracking
     ind = find(sP.Sub.isPlot);
-    nApp = length(ind); if (nApp == 0); return; end
-    p = plotD{1}(ind);
+    nApp = length(ind); 
+    if nApp == 0
+        return
+    else
+        p = plotD{1}(ind);
+    end
 end
 
 % retrieves the panel object handle
@@ -362,7 +370,7 @@ for i = 1:nApp
             % plots the traces that are closest to the average displacement
             [~,a] = sort(abs(p(i).Davg - median(p(i).Davg)),'ascend');
             iPlt = a(1:pP.nRow); iPlt = iPlt(randperm(pP.nRow));
-        elseif (pP.randPerm)
+        elseif pP.randPerm
             % randomly permute the plot indices
             iPlt = sort(randperm(size(X{i},2),pP.nRow),'ascend');
         else
@@ -400,13 +408,17 @@ for i = 1:nApp
     % plots the column seperators
     for j = 0:nRow
         hCol = plot([0 nCol],j*[1 1],'k:');
-        if (any(j == [0 nRow])); set(hCol,'linestyle','-','linewidth',1.5); end
+        if any(j == [0 nRow])
+            set(hCol,'linestyle','-','linewidth',1.5); 
+        end
     end    
 
     % plots the row seperators
     for j = 0:nCol
         hCol = plot(j*[1 1],[0 nRow],'k:');
-        if (any(j == [0 nCol])); set(hCol,'linestyle','-','linewidth',1.5); end
+        if any(j == [0 nCol])
+            set(hCol,'linestyle','-','linewidth',1.5); 
+        end
     end
                
     % formats the plot axis

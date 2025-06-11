@@ -168,7 +168,7 @@ h = ProgBar(wStr,'2D Heatmap Calculations');
 [dPx,dPy,R] = get2DCoordsBG(snTot,iApp);
 
 % ensures the data is stored in cell arrays
-if ~iscell(dPx)
+if (length(iApp) == 1)
     [dPx,dPy,R] = deal({dPx},{dPy},{R});
 end
 
@@ -181,11 +181,11 @@ end
 
 % determines which trace belongs to which sub-region. from this, scale
 % the data values
-for j = 1:length(iApp)
+nApp = length(iApp);
+for j = 1:nApp
     % updates the waitbar figure (if more than one solution file)
-    wStrNw = sprintf('Calculating Heatmaps (Region %i of %i)',...
-                        j,length(iApp));
-    if h.Update(1,wStrNw,0.5*(1+j/(1+length(iApp))))
+    wStrNw = sprintf('Calculating Heatmaps (Region %i of %i)',j,nApp);
+    if h.Update(1,wStrNw,0.5*(1+j/(1+nApp)))
         [plotD,ok] = deal([],false);
         return
     end

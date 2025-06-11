@@ -398,18 +398,24 @@ for i = 1:nExp
         h.Update(2,wStr{2},0);
     end
 
-    % calculates the video frame rate and experiment apparatus indices        
-    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));     
-
     % sets the relevant time points and apparatus indices for this expt
     if cP.useAll
         % uses all the time points
-        ii = 1:length(T{i});
-        nFrm = length(ii);
+        iFrm = 1:length(T{i});
+        nFrm = length(iFrm);
     else
         % use only the points from the start to the duration end
-        ii = (T{i} >= 60*cP.T0) & (T{i} <= 60*(cP.T0 + cP.Tdur));
-        nFrm = sum(ii);
+        iFrm = (T{i} >= 60*cP.T0) & (T{i} <= 60*(cP.T0 + cP.Tdur));
+        nFrm = sum(iFrm);
+    end        
+    
+    % calculates the video frame rate and experiment apparatus indices        
+    iApp = find(~cellfun('isempty',snTot(i).iMov.flyok));     
+    
+    % sets the relevant x/y-locations for the current experiment 
+    [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp,iFrm);
+    if length(iApp) == 1
+        [dPx,dPy,R] = deal({dPx},{dPy},{R});
     end    
     
     % determines the number of search frames for the pre/post edge contact
@@ -417,19 +423,13 @@ for i = 1:nExp
     dTmn = median(diff(T{i}));
     [nFrmB,nFrmA] = deal(ceil(cP.tBefore/dTmn),ceil(cP.tAfter/dTmn));
     Dtol = cP.vTol*dTmn;
-    
-    % sets the relevant x/y-locations for the current experiment 
-    [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp,ii);
-    if length(iApp) == 1
-        [dPx,dPy,R] = deal({dPx},{dPy},{R});
-    end
         
-    % determines the turning events for each frame
-    for jj = 1:length(iApp)
+    % determines the turning events for each grouping
+    nApp2 = length(iApp);
+    for j = 1:nApp2
         % updates the waitbar figure 
-        j = iApp(jj);
-        wStrNw = sprintf('%s (Group %i of %i)',wStr{2},jj,length(iApp));
-        if h.Update(2,wStrNw,jj/length(iApp))
+        wStrNw = sprintf('%s (Group %i of %i)',wStr{2},j,nApp2);
+        if h.Update(2,wStrNw,j/nApp2)
             [plotD,ok] = deal([],false);
             return
         end        
@@ -580,18 +580,19 @@ for i = 1:nExp
         end       
         
         % append that data to the overall arrays
+        jj = iApp(j);
         ii = ~cellfun('isempty',PhiAppNw);
-        PhiApp{j} = [PhiApp{j};cell2mat(PhiAppNw(ii))];
-        Dmove{j} = [Dmove{j};cell2mat(DmoveNw(ii))];        
-        Dturn{j} = [Dturn{j};cell2mat(DturnNw(ii))];        
-        Tdir{j} = [Tdir{j};cell2mat(TdirNw(ii))];        
-        Dedge{j} = [Dedge{j};cell2mat(DedgeNw(ii))];
-        Tedge{j} = [Tedge{j};cell2mat(TedgeNw(ii))*dTmn];                
-        Tmove{j} = [Tmove{j};cell2mat(TmoveNw(ii))];
+        PhiApp{jj} = [PhiApp{jj};cell2mat(PhiAppNw(ii))];
+        Dmove{jj} = [Dmove{jj};cell2mat(DmoveNw(ii))];        
+        Dturn{jj} = [Dturn{jj};cell2mat(DturnNw(ii))];        
+        Tdir{jj} = [Tdir{jj};cell2mat(TdirNw(ii))];        
+        Dedge{jj} = [Dedge{jj};cell2mat(DedgeNw(ii))];
+        Tedge{jj} = [Tedge{jj};cell2mat(TedgeNw(ii))*dTmn];                
+        Tmove{jj} = [Tmove{jj};cell2mat(TmoveNw(ii))];
         
-        % sets the 
+        % sets the outer region percentage
         indF = 1:length(onEdge);
-        plotD(j).PrE(1,indF,i) = cellfun(@(x)(100*mean(x)),onEdge,'un',0);
+        plotD(jj).PrE(1,indF,i) = cellfun(@(x)(100*mean(x)),onEdge,'un',0);
 %         [TM{i,kk},DE{i,kk}] = deal(TmoveNw,DedgeNw);
 %         TE{i,kk} = cellfun(@(x)(x*dTmn),TedgeNw,'un',0);  
     end   

@@ -178,7 +178,7 @@ for i = 1:nExp
     [dPx,dPy,R] = get2DCoordsBG(snTot(i),iApp);    
         
     % ensures the data is stored in cell arrays
-    if ~iscell(dPx)
+    if (length(iApp) == 1)
         [dPx,dPy,R] = deal({dPx},{dPy},{R});
     end
     
@@ -191,13 +191,13 @@ for i = 1:nExp
     
     % determines which trace belongs to which sub-region. from this, scale
     % the data values
-    for j = 1:length(iApp)
+    nApp2 = length(iApp);
+    for j = 1:nApp2
         % sets the x/y direction scale factors (based on shape)
-        jj = iApp(j);
         switch mShape
             case 'Circle'
                 % case is circular regions
-                [xScl,yScl] = deal(2*R{jj}(:)');
+                [xScl,yScl] = deal(2*R{j}(:)');
 
             case 'Rectangle'
                 % case is rectangular regions
@@ -205,6 +205,7 @@ for i = 1:nExp
         end        
         
         % sets the radius values       
+        jj = iApp(j);        
         for k = 1:(1+isDN)
             % sets the day/night flags for the current phase
             if (k == 1)
@@ -216,7 +217,7 @@ for i = 1:nExp
             % sets the normalised x/y coordinates
             Px{1,jj,k} = [Px{1,jj,k},...
                     num2cell(dPx{j}(iDN,:)./xScl + 1/2,1)];
-            Py{1,jj,k} = [Py{1,iApp(j),k},...
+            Py{1,jj,k} = [Py{1,jj,k},...
                     num2cell(dPy{j}(iDN,:)./yScl + 1/2,1)];
         end
     end

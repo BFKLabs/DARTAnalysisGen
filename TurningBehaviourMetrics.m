@@ -212,7 +212,7 @@ for i = 1:nExp
     
     % sets the relevant x/y-locations for the current experiment  
     [dPx0,dPy0,R0] = get2DCoordsBG(snTot(i),iApp);
-    if ~iscell(dPx0)
+    if length(iApp) == 1
         [dPx0,dPy0,R0] = deal({dPx0},{dPy0},{R0});
     end
     
@@ -222,9 +222,9 @@ for i = 1:nExp
     R = cellfun(@(x)(x/sFac),R0,'un',0);
     
     % determines the turning events for each frame
-    for jApp = 1:length(iApp)
+    nApp2 = length(iApp);
+    for j = 1:nApp2
         % calculates the angle of the fly wrt the circle centre
-        j = iApp(jApp);
         tInd{i,j} = cell(1,size(dPx{j},2));        
         for k = 1:size(dPx{j},2)
             kGrp = getGroupIndex(~isnan(dPx{j}(:,k)));
@@ -245,7 +245,7 @@ for i = 1:nExp
                 
         % determines the index groups where the fly is in contact with the
         % edge of the arena. groupings 
-        iGrp = cellfun(@(x)(getGroupIndex(x)),num2cell(onEdge,1),'un',0);                
+        iGrp = cellfun(@(x)(getGroupIndex(x)),num2cell(onEdge,1),'un',0);
         dDCnw = NaN(1,length(iGrp));
         for k = 1:length(iGrp)
             % memory allocations
@@ -363,10 +363,11 @@ for i = 1:nExp
         end
         
         % appends the overall turn count to the total array
+        jj = iApp(j);
         ifok = 1:length(iGrp);
 %         ifok = snTot(i).iMov.flyok{j};        
-        plotD(j).NT(1,ifok,i) = num2cell(cellfun('length',iGrp)); 
-        plotD(j).dDC(1,ifok,i) = num2cell(dDCnw);        
+        plotD(jj).NT(1,ifok,i) = num2cell(cellfun('length',iGrp)); 
+        plotD(jj).dDC(1,ifok,i) = num2cell(dDCnw);        
     end    
 end
     
