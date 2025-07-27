@@ -107,16 +107,19 @@ nMet = length(pMet);
 
 % sets up the general and bar/boxplot plotting parameter fields
 pP(1) = setParaFields(a{1},'List',{1,pMet},'pMet','Plot Metric');
-pP(2) = setParaFields(a{1},'Boolean',0,'plotGrid','Show Plot Axis Gridlines');
-pP(3) = setParaFields(a{2},'List',{1,pType},'pType','Plot Type',[],{1,indP});
-pP(4) = setParaFields(a{2},'Number',0.75,'pW',...
-                    'Bar Plot Relative Width',[0 1 false],{{1,3},{indP,1}});
-pP(5) = setParaFields(a{2},'Boolean',1,'plotErr',...
-                    'Show Errorbars/Outlier',[],{1,indP});
+pP(2) = setParaFields(...
+    a{1},'Boolean',0,'plotGrid','Show Plot Axis Gridlines');
+pP(3) = setParaFields(...
+    a{2},'List',{1,pType},'pType','Plot Type',[],{1,indP});
+pP(4) = setParaFields(a{2},'Number',0.75,...
+    'pW','Bar Plot Relative Width',[0 1 false],{{1,3},{indP,1}});
+pP(5) = setParaFields(a{2},'Boolean',1,...
+    'plotErr','Show Errorbars/Outlier',[],{1,indP});
 
 % sets the trace type parameter (multi-expt only)
 if ~mltExp
-    pP(6) = setParaFields(a{3},'List',{1,pMetT},'pMetT','Trace Type',[],{1,1});
+    pP(6) = setParaFields(...
+        a{3},'List',{1,pMetT},'pMetT','Trace Type',[],{1,1});
 end
 
 % sets the other trace parameter fields
@@ -127,8 +130,10 @@ pP(iiP) = setParaFields(a{3},'Number',1,'lWid',...
 % adds in the trace checkbox parameters            
 if ~mltExp
     iiP = 9;
-    pP(8) = setParaFields(a{3},'Boolean',0,'useFrm','Plot Frame Index',[],{1,1});            
-    pP(9) = setParaFields(a{3},'Boolean',0,'pltThresh','Plot Threshold Limits',[],{1,1});            
+    pP(8) = setParaFields(...
+        a{3},'Boolean',0,'useFrm','Plot Frame Index',[],{1,1});            
+    pP(9) = setParaFields(...
+        a{3},'Boolean',0,'pltThresh','Plot Threshold Limits',[],{1,1});            
 end
             
 % sets the other trace parameter fields            
@@ -178,6 +183,7 @@ oP = addYVarField(oP,'Count (Total)','yCDFT',[],Type3,{'xCDFT'});
 % single experiment dependent variable fields
 if length(snTot) == 1
     oP = addXVarField(oP,'Time','T','Time');
+    oP = addYVarField(oP,'Counts','nEvI',[],5,{'T'},1);
     oP = addYVarField(oP,'Height','Y',[],Type4,{'T'},1);
     oP = addYVarField(oP,'Speed','V',[],Type4,{'T'},1);
     oP = addYVarField(oP,'Horz Speed','Vh',[],Type4,{'T'},1);
@@ -312,7 +318,8 @@ end
 [nApp,nExp,ok] = deal(length(snTot(1).iMov.ok),length(snTot),true);
 
 % initialises the plot value data struct
-plotD = initPlotValueStruct(snTot,pData,cP,'T',[],'Y',[],'V',[],'Vh',[],...
+plotD = initPlotValueStruct(snTot,pData,cP,...
+                'T',[],'Y',[],'V',[],'Vh',[],'nEvI',[],...
                 'tEvent',[],'tEvent_mn',[],'tEvent_sem',[],...                
                 'tEventT',[],'tEventT_mn',[],'tEventT_sem',[],...                            
                 'vEvent',[],'vEvent_mn',[],'vEvent_sem',[],...
@@ -415,6 +422,11 @@ for i = 1:nExp
             plotD(j).tEvent(1,flyok{j},i) = tE;
             plotD(j).vEvent(1,flyok{j},i) = vE;
             
+            %
+            if nExp == 1
+                plotD(j).nEvI(1,flyok{j},i) = getRunningEventCount(T,tS);
+            end
+            
             % sets the event count and total duration values
             plotD(j).nEvent(1,flyok{j},i) = ...
                             cellfun(@(x)(size(x,1)),iE,'un',0);
@@ -453,6 +465,8 @@ for i = 1:nExp
     % updates the waitbar figure
     h.Update(1+wOfs,'Event Detection Complete!',1);    
 end
+
+a = 1;
 
 % % ------------------------- %
 % % --- METRIC CONVERSION --- %
@@ -938,6 +952,19 @@ switch pMetT
         xScl = 1.05*max(cellfun(@max,sObj(~cellfun('isempty',sObj))));        
 end
 
+%
+function nEvI = getRunningEventCount(T,tS)
+
+% memory allocation
+nEvI = repmat({zeros(length(T),1)},1,length(tS));
+
+%
+for i = 1:length(tS)
+    for j = 1:sum(~isnan(tS{i}))
+        ii = T >= tS{i}(j);
+        nEvI{i}(ii) = nEvI{i}(ii) + 1;
+    end
+end
 
 % --- retrieves the position coordinates (smooths is necessary)
 function Y = getPosCoords(Y,cP)

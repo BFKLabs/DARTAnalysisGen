@@ -265,6 +265,8 @@ for i = 1:nExp
             if ~isempty(snTot(i).Px{j})                
                 if cP.calcInst
                     % calculates the instantaneous speed
+                    snTot(i).Px{j} = snTot(i).Px{j}(1:(length(dT)+1),:);
+                    snTot(i).Py{j} = snTot(i).Py{j}(1:(length(dT)+1),:);
                     V = calcInstantSpeed(snTot(i),dT,j);
                     
                 else
@@ -709,7 +711,8 @@ else
     
     
     % case is for multiple experiments
-    if all(cellfun(@(x)(max(abs(T0{1}-x))),T0(2:end)) < cP.tBin)
+    N = min(cellfun('length',T0));
+    if all(cellfun(@(x)(max(abs(T0{1}(1:N)-x(1:N)))),T0(2:end)) < cP.tBin)
         % case is all time vectors match
         [TD,T,dT] = deal(TD0{1},T0{1},dT{1});
         
